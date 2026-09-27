@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ピッチノート</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#5c111e">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ピッチノート">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,800;1,700;1,800&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app">
+  <nav class="nav" aria-label="画面の切り替え">
+    <button class="logo" data-goteams type="button" aria-label="チーム選択へ"><span>P<i>/</i>N</span></button>
+    <button data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</button>
+    <button data-nav="roster"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 11.5l2 2 4-4"/></svg>選手リスト</button>
+    <button data-nav="record"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.5"/><path d="M2.5 9h3v6h-3M21.5 9h-3v6h3"/></svg>試合記録</button>
+    <button data-nav="data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>データ・AI</button>
+  </nav>
+  <div class="content">
+    <header class="topbar">
+      <button class="iconbtn backbtn" id="backBtn" data-back type="button" hidden>◀ 戻る</button>
+      <div><div class="eng" id="screenEng">MATCH DAY</div><h1 id="screenTitle">ホーム</h1></div>
+      <button class="teamchip" id="teamChip" data-goteams type="button" hidden></button>
+      <div class="spacer"></div>
+      <span class="pill" id="miniTimer" hidden></span>
+      <span class="pill net" id="netPill"><span class="dot"></span><span id="netText">確認中</span></span>
+      <button class="iconbtn" id="brightBtn" type="button">☀️ 屋外モード</button>
+      <button class="iconbtn" data-settings type="button" aria-label="設定">⚙</button>
+      <button class="sync-btn" id="syncBtn" type="button">☁️ ドライブへ同期 <span class="badge" id="syncBadge">0</span></button>
+    </header>
+    <div class="storage-warn" id="storageWarn" hidden>この端末では記録を保存できない状態です（プライベートブラウズ等）。画面を閉じると記録が消えるので注意してください。</div>
+    <div class="storage-warn" id="syncWarn" hidden></div>
+    <main class="main" id="main"></main>
+  </div>
+</div>
+<div class="scrim" id="scrim" hidden><div class="sheet" role="dialog" aria-modal="true" id="sheet"></div></div>
+<div class="pop" id="pop" hidden></div>
+<div class="goal-fx" id="goalFx" hidden><div class="in"><b>GOAL!!</b><span id="goalFxName"></span></div></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="js/01-constants.js"></script>
+<script src="js/02-store.js"></script>
+<script src="js/03-utils.js"></script>
+<script src="js/04-render.js"></script>
+<script src="js/05-teams.js"></script>
+<script src="js/06-home.js"></script>
+<script src="js/07-roster.js"></script>
+<script src="js/08-record.js"></script>
+<script src="js/09-sheets.js"></script>
+<script src="js/10-stats.js"></script>
+<script src="js/11-data.js"></script>
+<script src="js/12-events.js"></script>
+<script src="js/13-live.js"></script>
+<script src="js/14-flow.js"></script>
+<script src="js/15-rules.js"></script>
+</body>
+</html>
