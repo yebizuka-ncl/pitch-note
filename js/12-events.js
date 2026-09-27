@@ -91,7 +91,7 @@ document.addEventListener('click', e => {
   if(d.pkfirst){ cur().pkFirst = d.pkfirst; save.matches(); render(); return; }
   if(d.pkkicker){ state.ui.pkKicker = state.ui.pkKicker === d.pkkicker ? null : d.pkkicker; render(); return; }
   if(d.pk){ const m = cur(), s = pkState(m, evOf(m.id)); if(!s.next) return;
-    const e = baseEvent('pkso'); e.team = s.next; e.no = s.nextNo; e.scored = d.pk === 'goal'; e.miss = d.pk === 'goal' ? null : d.pk;
+    const e = baseEvent('pkso'); e.team = s.next; e.no = s.nextNo; e.scored = d.pk === 'goal'; e.miss = d.pk === 'goal' ? null : d.pk; e.course = state.ui.pkCourse || null; state.ui.pkCourse = null;
     if(s.next === 'us' && state.ui.pkKicker){ const p = player(state.ui.pkKicker); Object.assign(e, { playerId:p.id, num:p.num, name:p.name }); }
     pushEvent(e); state.ui.pkKicker = null;
     const s2 = pkState(m, evOf(m.id));

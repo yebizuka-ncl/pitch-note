@@ -192,6 +192,7 @@ function renderSheet(){
       </div>
       <div class="row"><button class="btn danger" data-eddel type="button">この記録を削除</button><span style="flex:1"></span>
         ${e.type === 'shot' && e.result === 'goal' ? `<button class="btn" data-goaledit="${e.id}" type="button">⚽ 得点の状況</button>` : ''}
+        ${e.type === 'ck' || e.type === 'fk' ? `<button class="btn" data-sketchev="${e.id}" type="button">✏️ 作図${hasDrawing(e.sketch) ? '（あり）' : ''}</button>` : ''}
         <button class="btn" data-close type="button">キャンセル</button><button class="btn primary" data-edsave type="button">保存</button></div>`, 'wide');
     return;
   }
@@ -232,7 +233,7 @@ function renderSheet(){
       <div class="q">どんな場面？</div>${chipsHTML(MARK_TAGS, 'tag', d.tag)}
       <div class="q">関わった選手 <span class="muted">（任意）</span></div>
       <div class="chips">${ps.map(p => `<button type="button" data-g="playerId" data-v="${p.id}" aria-pressed="${d.playerId===p.id}">#${p.num} ${esc(family(p.name))}</button>`).join('')}</div>
-      <label class="field">ひとことメモ <span class="muted" style="font-weight:600">（任意・あとで入力してもOK）</span><input id="markNote" value="${esc(d.note)}" placeholder="例：右サイドの3人目の動き" autocomplete="off"></label>
+      <label class="field">ひとことメモ <span class="muted" style="font-weight:600">（任意・あとで入力してもOK）</span><textarea id="markNote" class="scrib" rows="2" placeholder="例：右サイドの3人目の動き（✍️ Apple Pencilで直接書けます）">${esc(d.note)}</textarea></label>
       <div class="row"><button class="btn danger" data-mdel type="button">マークを削除</button><span style="flex:1"></span><button class="btn" data-close type="button">閉じる</button><button class="btn primary" data-msave type="button">保存</button></div>`);
     return;
   }
@@ -243,7 +244,9 @@ function renderSheet(){
     const lanes = flip ? LANES.slice().reverse() : LANES, thirds = flip ? THIRDS.slice().reverse() : THIRDS;
     const assists = (state.current === e.matchId ? state.lineup : []).map(player).filter(p => p && p.id !== e.playerId);
     openSheet(`<h2><span class="chip ${e.team}">${us ? '得点' : '失点'}</span><span class="disp" style="font-size:24px;font-weight:800">${esc(pShort(m, e.period))} ${e.clock}</span>
-        ${e.num ? `#${e.num} ${esc(family(e.name))}` : ''}<span class="chip ctx">${goalContext(e)}</span></h2>
+        ${e.num ? `#${e.num} ${esc(family(e.name))}` : ''}<span class="chip ctx">${goalContext(e)}</span>
+        <span style="flex:1"></span><button class="btn small ${hasDrawing(e.buildup) ? '' : 'primary'}" data-sketchgoal type="button">✏️ 得点までの流れを${hasDrawing(e.buildup) ? '直す' : '描く'}</button></h2>
+      ${hasDrawing(e.buildup) ? `<div class="gbuild">${sketchSVG(e.buildup)}</div>` : ''}
       <div class="gsheet">
         <section>
           <div class="q"><b>①</b> 局面 <span class="muted">（必須）</span></div>
@@ -300,6 +303,7 @@ function halftimeSheet(){
     ${pend.length ? `<p style="font-size:13px"><span class="chip warn">状況が未入力のゴール ${pend.length}件</span>　${pend.map(e => `<button class="btn small attn" data-goaledit="${e.id}" type="button">${esc(pShort(m, e.period))} ${e.clock} ${e.team==='us'?'得点':'失点'}</button>`).join(' ')}</p>` : ''}
     <p style="font-size:13px">話し合いのヒント：PA内から打てている？　被シュートはどのレーンから？　CKはシュートまでつながった？　★マークの場面は？</p>
     ${htPointsHTML(m)}
+    ${boardsHTML(m)}
     <div class="row"><button class="btn primary" data-close type="button">閉じる</button></div>`, 'wide');
 }
 function fmSheet(){

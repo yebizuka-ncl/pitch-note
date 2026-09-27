@@ -778,3 +778,68 @@ td .num{font-size:17px;font-weight:800}
 .subinfo.full{background:rgba(229,57,53,.18);border-color:#e53935;color:#ff8a80}
 .pop .subinfo{font-size:11.5px;padding:2px 8px}
 .regbar .seg{display:inline-flex;width:auto;grid-column:auto}.regbar .seg button{padding:6px 14px;min-width:0;font-size:13px}
+
+/* ---------- v13 Apple Pencil 作図・PKコース・時間帯別 ---------- */
+.sheet.sksheet{width:min(1180px,100%);padding:12px 14px;gap:8px}
+.skhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.skhead h2{margin:0}
+.skwrap{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:12px;align-items:start}
+.skboard{position:relative;border-radius:12px;overflow:hidden;background:var(--pitch-a);display:flex;justify-content:center}
+.skboard .sksvg{width:100%;height:auto;max-height:calc(100dvh - 130px);touch-action:none;-webkit-user-select:none;user-select:none;display:block}
+.skdir{position:absolute;left:8px;bottom:6px;background:rgba(0,0,0,.45);color:#fff;border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:800;pointer-events:none}
+.sktools{display:flex;flex-direction:column;gap:8px}
+.sktgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.skt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1.5px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:12px;padding:8px 10px;text-align:left;min-height:62px}
+.skt b{font-size:13.5px}.skt small{font-size:10.5px;color:var(--ink-3);font-weight:700}
+.skt i{display:block;width:34px;height:6px;border-radius:3px;background:#fff}
+.skt.runUs i{background:repeating-linear-gradient(90deg,var(--kit-hi) 0 7px,transparent 7px 11px)}
+.skt.runThem i{background:repeating-linear-gradient(90deg,var(--opp) 0 7px,transparent 7px 11px)}
+.skt.free i{background:#ffd600}
+.skt.dotUs i,.skt.dotThem i{width:14px;height:14px;border-radius:50%;background:var(--kit-hi);border:2px solid #fff}
+.skt.dotThem i{background:var(--opp)}
+.skt[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset;background:var(--surface)}
+.skrow{display:flex;gap:6px;flex-wrap:wrap}.skrow.end{margin-top:4px;align-items:center}
+.skrow.end .btn.primary{flex:1}
+.skhint{font-size:12px;color:var(--ink-3);margin:0;line-height:1.5}
+@media (max-width:900px){.skwrap{grid-template-columns:1fr}.sktgrid{grid-template-columns:repeat(3,1fr)}}
+.gbuild{max-width:420px;border-radius:10px;overflow:hidden}
+.gbuild .sksvg,.bthumb .sksvg,.rp-fig .sksvg,.spov .sksvg{width:100%;height:auto;display:block}
+.bthumbs,.spthumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.bthumb{display:flex;flex-direction:column;gap:4px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:10px;padding:5px;font-size:12px;font-weight:800;text-align:left}
+.bthumb .sksvg{border-radius:6px}
+.bthumb.new{align-items:center;justify-content:center;min-height:100px;border-style:dashed}.bthumb.new b{font-size:28px;line-height:1}
+.spov{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px}.spov h4{margin:0 0 4px;font-size:13px}
+/* PKのコース */
+.pkgoal{display:grid;grid-template-columns:54px 1fr 54px;grid-template-rows:26px 1fr;gap:4px;max-width:340px;width:100%;margin:0 auto}
+.pkgoal .top{grid-column:1/-1}.pkgoal .left{grid-row:2;grid-column:1}.pkgoal .right{grid-row:2;grid-column:3}
+.pkframe{grid-row:2;grid-column:2;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);aspect-ratio:3/1.35;border:4px solid #fff;border-bottom:0;background:repeating-linear-gradient(45deg,rgba(255,255,255,.06) 0 6px,transparent 6px 12px)}
+.pkgoal button,.pkgoal>div:not(.pkframe),.pkframe>div{border:1px dashed rgba(255,255,255,.28);background:transparent;color:var(--ink-2);font-size:10.5px;font-weight:800;border-radius:0;padding:0;min-height:0;display:flex;align-items:center;justify-content:center;gap:3px;flex-wrap:wrap}
+.pkgoal .out{border-radius:6px;background:rgba(255,255,255,.04)}
+.pkgoal button[aria-pressed="true"]{background:var(--gold);color:#2a1d00;border-style:solid}
+.pkgoal.map b{font-size:12px}.pkgoal.map b.ok{color:var(--on)}.pkgoal.map b.ng{color:#ff6b6b}
+.pop .pkgoal{max-width:300px}
+.pkcourse{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+.pkmaps{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pkmaps h4{margin:0 0 4px;font-size:12.5px}
+/* 時間帯別 */
+.tbsvg{width:100%;max-height:220px;display:block}
+.tblegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;font-weight:700;color:var(--ink-2)}
+.tblegend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+/* 手書き（スクリブル）しやすい入力欄 */
+textarea.scrib{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font:inherit;font-weight:700;font-size:16px;min-height:64px;resize:vertical}
+.ptsin input{min-height:52px;font-size:16px}
+.scribwrap::after{content:'✍️ Apple Pencilで入力欄に直接書けます';grid-column:1/-1;font-size:11.5px;color:var(--ink-3);font-weight:700}
+/* レポートの2段目 */
+.rp-more{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-top:14px;padding-top:10px;border-top:1px solid #d9dde3}
+.rp-figs{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rp-figs.half{grid-template-columns:repeat(3,1fr)}
+.rp-fig{margin:0}.rp-fig figcaption{font-size:10.5px;font-weight:800;color:#444;margin-top:2px}
+.paper .pkgoal button,.paper .pkgoal>div:not(.pkframe),.paper .pkframe>div{border-color:#c5cad3;color:#333}.paper .pkframe{border-color:#555}
+.paper .pkgoal.map b.ok{color:#1d8a4e}.paper .pkgoal.map b.ng{color:#c62828}
+.pkgoal.map{grid-template-columns:30px 1fr 30px;grid-template-rows:18px auto;max-width:300px;margin:0}
+.pkgoal.map .pkframe{min-height:60px}
+.rp .pkmaps{grid-template-columns:1fr 1fr;gap:8px}.rp .pkmaps h4{font-size:11px}
+.tbsvg{margin:0 auto}
+.skt.move i{width:18px;height:18px;border-radius:50%;background:var(--kit);border:2px solid var(--accent);box-shadow:8px 0 0 -2px var(--opp)}
+.skfm{display:grid;grid-template-columns:1fr;gap:6px}
+.skfm label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;font-weight:800}
+.skfm select{font:inherit;padding:5px 8px;border-radius:8px;background:var(--surface-2);color:var(--ink);border:1px solid var(--line);max-width:120px}
+[data-sktrail][aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+#skSvg [data-pl],#skSvg [data-it]{cursor:grab}

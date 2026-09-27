@@ -90,7 +90,7 @@ function recordShot(team, result, opt = {}){
   const pk = !!opt.pk, x = pk ? (team === 'us' ? 94 : 11) : opt.x, y = pk ? 34 : opt.y;
   const e = baseEvent('shot'); e.team = team; withPos(e, x, y);
   e.area = pk ? 'PA' : areaOf(x, y, team); e.dist = distOf(x, y, team);
-  e.result = result; e.pk = pk; e.foot = null; if(opt.fkShot) e.fkShot = true;
+  e.result = result; e.pk = pk; e.foot = null; if(opt.fkShot) e.fkShot = true; if(pk && opt.course) e.pkCourse = opt.course;
   const sp = pk ? null : evOf(m.id).slice().reverse().find(v => (v.type === 'ck' || v.type === 'fk') && v.team === team && v.period === e.period && e.sec - v.sec >= 0 && e.sec - v.sec <= 15);
   e.fromSetPiece = sp ? sp.type : null;
   e.goal = result === 'goal' && pk ? { phase:'setpiece', detail:'pk', lastPass:'direct', lane:3, foot:null, touch:null, originZone:null, assistId:null, oppNum:null } : null;
@@ -107,6 +107,7 @@ function recordCK(team, side, style){
   if(state.ui.pos) withPos(e, state.ui.pos.x, state.ui.pos.y);
   pushEvent(e); state.ui.pos = null; state.ui.pop = null;
   afterRecord(e, `${teamName(m, team)} ${t.label}`); render();
+  maybeSetPieceSketch(e);
 }
 function recordFK(team, kind, play){
   const m = cur(), pos = state.ui.pos;
@@ -116,6 +117,7 @@ function recordFK(team, kind, play){
   if(play === 'shot'){ state.ui.pop = { kind:'pitch', mode:'fkshot', team }; beep('rec'); render(); return; }
   state.ui.pos = null; state.ui.pop = null;
   afterRecord(e, `${teamName(m, team)} ${lbl(FK_KINDS, kind)}→${lbl(FK_PLAYS, play)}`); render();
+  maybeSetPieceSketch(e);
 }
 function recordOG(team){
   const m = cur(), e = baseEvent('og'); e.team = team; e.playerId = null; e.oppNum = null;
@@ -240,6 +242,7 @@ function settingsSheet(){
     <div class="setlist">
       <label class="setrow"><span><b>記録したときの効果音</b><small>画面を見なくても記録できたと分かります</small></span><input type="checkbox" id="setSound" ${st.sound ? 'checked' : ''}></label>
       <label class="setrow"><span><b>左手で操作する</b><small>記録ボタンの列を左側に置きます</small></span><input type="checkbox" id="setLefty" ${st.lefty ? 'checked' : ''}></label>
+      <label class="setrow"><span><b>CK・FKのあとに作図を開く</b><small>ハーフコートの図が出て、ボールの軌道や選手の位置をApple Pencilで描けます（「あとで」で閉じられます）</small></span><input type="checkbox" id="setDrawSP" ${st.drawSP ? 'checked' : ''}></label>
       <label class="setrow"><span><b>屋外モード（明るい配色）</b><small>直射日光の下で見やすくします</small></span><input type="checkbox" id="setBright" ${state.meta.bright ? 'checked' : ''}></label>
     </div>
     ${gasSettingsHTML()}

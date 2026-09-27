@@ -135,7 +135,7 @@ function popHTML(){
   }
   if(p.kind === 'ck') return `<div class="pop-h"><b>CK</b><span class="muted">左右は攻める向きで</span>${x}</div>
     ${['us','them'].map(t => `<div class="rrow ${t}"><span class="lab">${tn(t)}</span><div class="rbtns r4">${CK_TYPES.map(c => `<button type="button" data-pck="${t}:${c.side}:${c.style}">${c.side === 'L' ? '左' : '右'}・${c.style === 'cross' ? 'クロス' : 'ショート'}</button>`).join('')}</div></div>`).join('')}`;
-  if(p.kind === 'pk') return `<div class="pop-h"><b>PK の結果</b>${x}</div>${['us','them'].map(t => resRow(t, RESULTS.filter(r => r.id !== 'block'), ':pk')).join('')}`;
+  if(p.kind === 'pk') return `<div class="pop-h"><b>PK</b><span class="muted">① コース（キッカーから見て・任意） ② 結果</span>${x}</div>${pkGridHTML(p.course, 'pkc')}${['us','them'].map(t => resRow(t, RESULTS.filter(r => r.id !== 'block'), ':pk')).join('')}`;
   if(p.kind === 'og') return `<div class="pop-h"><b>オウンゴール</b>${x}</div>
     <div class="pop-act col"><button type="button" data-pog="us">⚽<span>${tn('us')}に1点（相手のOG）</span></button><button type="button" data-pog="them">⚽<span>${tn('them')}に1点（自チームのOG）</span></button></div>`;
   if(p.kind === 'foot'){ const e = state.events.find(v => v.id === p.eventId);
@@ -197,7 +197,8 @@ function popClick(b){
   if('popx' in d){ if(p.kind === 'pitch'){ state.ui.pos = null; state.ui.tapAt = null; } closePop(); return; }
   if(d.pgoal){ closePop(true); openEdit(d.pgoal); return; }
   if(d.pshot){ const [t, r, flag] = d.pshot.split(':'); const pos = state.ui.pos || {};
-    recordShot(t, r, { x:pos.x, y:pos.y, pk:flag === 'pk', fkShot:flag === 'fk' }); return; }
+    recordShot(t, r, { x:pos.x, y:pos.y, pk:flag === 'pk', fkShot:flag === 'fk', course:flag === 'pk' ? p.course : null }); return; }
+  if(d.pkc){ p.course = p.course === d.pkc ? null : d.pkc; renderPop(); return; }
   if(d.pck){ const [t, side, style] = d.pck.split(':'); recordCK(t, side, style); return; }
   if(d.pfk){ state.ui.pop = { kind:'pitch', mode:'fk', team:d.pfk }; renderPop(); return; }
   if(d.pfkp){ const [k, pl] = d.pfkp.split(':'); recordFK(p.team, k, pl); return; }
@@ -343,6 +344,7 @@ function pkView(m, ev){
     <div class="pknext">
       <div style="font-weight:900;font-size:17px">次のキッカー：<span class="chip ${s.next}" style="font-size:15px">${esc(teamName(m, s.next))}</span> ${s.nextNo}人目${s.nextNo > 5 ? '（サドンデス）' : ''}</div>
       ${s.next === 'us' ? `<div class="chips">${on.map(p => `<button type="button" data-pkkicker="${p.id}" aria-pressed="${state.ui.pkKicker===p.id}" ${kicked.has(p.id) && s.nextNo <= on.length ? 'style="opacity:.45"' : ''}>#${p.num} ${esc(family(p.name))}</button>`).join('')}</div>` : ''}
+      <div class="pkcourse"><span class="muted">コース（キッカーから見て・任意）</span>${pkGridHTML(state.ui.pkCourse, 'pkcs')}</div>
       <div class="pkbtns"><button type="button" data-pk="goal">⚽ 成功</button><button type="button" data-pk="save">✋ 失敗（セーブ）</button><button type="button" data-pk="off">✕ 失敗（枠外）</button></div>
     </div>`}
   </section>`;

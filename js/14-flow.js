@@ -87,7 +87,7 @@ function matchFormHTML(m){
       ${subFormHTML(m, '公式戦', 'mSubO')}
     </div>
     <div class="field" style="grid-column:1/-1">試合前のポイント（今日のテーマ・最大3つ）
-      <div class="ptsin">${[0,1,2].map(i => `<input id="pp${i}" value="${esc(pts[i]?.text || '')}" placeholder="${['例：奪ったら3秒で前へ','例：サイドから崩す','例：声を出して守る'][i]}" autocomplete="off">`).join('')}</div></div>
+      <div class="ptsin scribwrap">${[0,1,2].map(i => `<input id="pp${i}" value="${esc(pts[i]?.text || '')}" placeholder="${['例：奪ったら3秒で前へ','例：サイドから崩す','例：声を出して守る'][i]}" autocomplete="off">`).join('')}</div></div>
     <div class="field" style="grid-column:1/-1">記録者（最大3人・それぞれスクロールで選ぶ）${recWheelsHTML(m?.recorders || state.ui.recSel || [])}</div>
     <div class="kitpick" role="group" aria-label="今日のユニフォーム">
       ${[1,2].map(n => `<button type="button" data-kitpick="${n}" aria-pressed="${k===n}"><span class="sw" style="background:linear-gradient(135deg,${KITS[n].a} 0 62%,${KITS[n].b} 62%)"></span><span><span class="disp" style="font-size:20px">${KITS[n].label}</span> ユニフォーム</span></button>`).join('')}
@@ -177,7 +177,7 @@ const EVALS = [{ id:'◎', label:'◎ できた' }, { id:'○', label:'○ ま�
 function htPointsHTML(m){
   const ht = m.points?.ht || [];
   return `<div class="q">後半（次の本）に修正すること（最大3つ）</div>
-    <div class="ptsin">${[0,1,2].map(i => `<input id="hp${i}" value="${esc(ht[i]?.text || '')}" placeholder="${['例：SBの裏のスペースを使う','例：切り替えを速く','例：CKの守備はゾーンで'][i]}" autocomplete="off">`).join('')}</div>
+    <div class="ptsin scribwrap">${[0,1,2].map(i => `<input id="hp${i}" value="${esc(ht[i]?.text || '')}" placeholder="${['例：SBの裏のスペースを使う','例：切り替えを速く','例：CKの守備はゾーンで'][i]}" autocomplete="off">`).join('')}</div>
     <div class="row" style="justify-content:flex-start"><button class="btn small" data-htsave type="button">修正点を保存</button>
     ${(m.points?.pre || []).length ? `<span class="muted" style="font-size:12.5px">試合前のポイント：${m.points.pre.map(x => esc(x.text)).join('／')}</span>` : ''}</div>`;
 }
@@ -208,7 +208,8 @@ function viewPost(){
           <button class="btn small primary" data-export="pdf" type="button">PDF</button>
           <button class="btn small" data-export="png" type="button">画像（PNG）</button>
           <button class="btn small" data-export="csv" type="button">記録一覧（CSV）</button>
-          <button class="btn small" data-export="text" type="button">連絡用テキスト</button></div></div>
+          <button class="btn small" data-export="text" type="button">連絡用テキスト</button>
+          <button class="btn small" data-export="chapters" type="button">🎬 動画の目次</button></div></div>
       <div class="paperwrap"><div class="paper" id="reportPaper">${reportHTML(m)}</div></div>
       <p class="muted" style="font-size:12px;margin:0">PDF：印刷・保存用（A4横）／画像：LINE・Classroomに貼る用／CSV：Excel・スプレッドシート用／テキスト：保護者への連絡などに貼り付け</p>
     </section>
@@ -266,6 +267,7 @@ function reportHTML(m){
         ${m.recorders?.length ? `<div class="sm" style="margin-top:6px">記録：${m.recorders.map(r => esc(recorderLabel(r))).join('、')}</div>` : ''}
       </div>
     </div>
+    ${reportDrawHTML(m)}
   </div>`;
 }
 
@@ -296,13 +298,21 @@ async function exportReport(kind){
       downloadBlob(new Blob([csv], { type:'text/csv' }), base + '.csv'); return;
     }
     if(kind === 'text'){ showCopy(resultText(m)); return; }
+    if(kind === 'chapters'){ showChapters(m); return; }
     toast('出力を準備しています…');
     const canvas = await paperCanvas();
     if(kind === 'png'){ canvas.toBlob(b => downloadBlob(b, base + '.png'), 'image/png'); return; }
     await loadScript(LIBS.pdf);
     const { jsPDF } = window.jspdf, doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+    // A4横に収まらない長さのときは、ページを分けて続ける
     const w = 297, h = canvas.height / canvas.width * w;
-    doc.addImage(canvas.toDataURL('image/jpeg', .92), 'JPEG', 0, Math.max(0, (210 - h) / 2), w, Math.min(h, 210));
+    if(h <= 210) doc.addImage(canvas.toDataURL('image/jpeg', .92), 'JPEG', 0, (210 - h) / 2, w, h);
+    else { const pagePx = Math.floor(canvas.width * 210 / 297);
+      for(let y = 0, n = 0; y < canvas.height; y += pagePx, n++){
+        const c = document.createElement('canvas'), hh = Math.min(pagePx, canvas.height - y); c.width = canvas.width; c.height = hh;
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, hh); g.drawImage(canvas, 0, y, canvas.width, hh, 0, 0, canvas.width, hh);
+        if(n) doc.addPage();
+        doc.addImage(c.toDataURL('image/jpeg', .92), 'JPEG', 0, 0, w, hh / canvas.width * w); } }
     downloadBlob(doc.output('blob'), base + '.pdf');
   }catch(e){ toast('出力に失敗しました。一度インターネットにつないでから試してください（出力用の部品を読み込みます）'); }
 }

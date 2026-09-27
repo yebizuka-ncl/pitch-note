@@ -83,6 +83,7 @@ function viewData(){
             <div class="lb">${b.lb}</div></div>`).join('')}</div>
       </section>
     </div>
+    ${drawPanelsHTML(ms, ev, usName, themName)}
     ${breakdownPanel(ev)}
     <section class="card panel">
       <div class="hd"><h3>得点・失点の分析</h3><span class="muted" style="font-size:12px">数字は「得点 - 失点」。状況を入力したゴールだけを数えます</span></div>
