@@ -482,3 +482,52 @@ function deleteMatch(id){
     } }] });
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-delmatch]'); if(b && !e.target.closest('#sheet')) deleteMatch(b.dataset.delmatch); });
+
+/* ================= PLAYER LOG との連携 =================
+   同期のとき、終わった試合ごとに「試合まとめ」（1試合1行）と「選手の場面」（選手ごとの★・得点・アシスト・ベストプレー）をシートに書き出す。
+   PLAYER LOG はこの2枚を読み込んで、生徒に試合のまとめ・自分の場面の動画・振り返りの入力画面を出す */
+function playerLogRows(m){
+  const ev = evOf(m.id), pk = pkState(m, ev), r = m.review || {}, res = resultOf(m);
+  const pn = pid => player(pid);
+  const perScores = m.periods.filter(p => p.kind !== 'pk').map(p => { const i = m.periods.indexOf(p), pe = ev.filter(e => e.period === i); return `${p.label} ${goalsOf(pe, 'us')}-${goalsOf(pe, 'them')}`; }).join(' / ');
+  const scorers = ev.filter(e => isGoalEv(e) && e.team === 'us').map(e => `${pShort(m, e.period)} ${clockMark(e.clock)} ${e.type === 'og' ? 'OG' : e.num ? `#${e.num} ${e.name}` : '（得点者未入力）'}`).join('、');
+  const secs = playSeconds(m, m.periods.map((_, i) => i)), subIn = ev.filter(e => e.type === 'sub' && e.team === 'us').map(e => e.inId);
+  const played = [...new Set([...Object.keys(secs).filter(id => secs[id] > 0), ...subIn])].map(pn).filter(Boolean).sort((a, b) => a.num - b.num)
+    .map(p => ({ id:p.id, num:p.num, name:p.name, role:playerRole(m, p.id).kind === 'sub' ? '途中' : '先発', min:Math.round((secs[p.id] || 0) / 60) }));
+  const be = m.best?.id ? ev.find(e => e.id === m.best.id) : null;
+  const pts = m.points || {}, evalTxt = [...(pts.pre || []).map(x => `[前]${x.eval || ''}${x.text}`), ...(pts.ht || []).map(x => `[HT]${x.eval || ''}${x.text}`)].join(' / ');
+  const summary = { id:m.id, date:m.date, opponent:m.opponent, kind:m.kind, tournament:m.tournament || '', us:goalsOf(ev, 'us'), them:goalsOf(ev, 'them'),
+    pk:pk.na + pk.nb ? `${pk.a}-${pk.b}` : '', result:res.label + (res.sub ? `（${res.sub}）` : ''), perScores, scorers, themes:evalTxt,
+    good:r.good || '', issue:r.issue || '', next:r.next || '', principles:(r.tags || []).join('・'),
+    best:be ? sceneLabel(be, m) + (m.best.note ? `「${m.best.note}」` : '') : '', bestUrl:be ? (sceneUrl(be, m) || '') : '',
+    video:[m.video?.url, ...Object.values(m.video?.per || {})].filter(Boolean).join(' '), played:played.map(p => `#${p.num} ${p.name}（${p.role}）`).join('、'), playedJson:JSON.stringify(played),
+    state:m.deleted ? '削除' : '終了' };
+  const scenes = [], add = (e, pid, kind, text) => { const p = pn(pid); if(!p) return;
+    scenes.push({ id:`${e.id}_${pid}_${kind}`, matchId:m.id, date:m.date, opponent:m.opponent, pid, num:p.num, name:p.name, time:`${pShort(m, e.period)} ${clockMark(e.clock)}`, kind, text, url:sceneUrl(e, m) || '' }); };
+  if(!m.deleted) ev.forEach(e => {
+    if(e.type === 'mark' && e.playerId) add(e, e.playerId, '★', `${e.tag ? lbl(MARK_TAGS, e.tag).replace(/^\S+\s/, '') : '動画メモ'}${e.note ? `「${e.note}」` : ''}`);
+    if(e.type === 'shot' && e.team === 'us' && e.result === 'goal'){ if(e.playerId) add(e, e.playerId, '得点', `${goalContext(e)}`); if(e.goal?.assistId) add(e, e.goal.assistId, 'アシスト', e.num ? `#${e.num} ${e.name} の得点をアシスト` : '得点をアシスト'); }
+    if(be && e.id === be.id){ [be.playerId, be.goal?.assistId].filter(Boolean).forEach(pid => add(e, pid, 'ベストプレー', m.best.note || 'チームのベストプレー')); }
+  });
+  return { summary, scenes };
+}
+// 試合後：Classroom に貼る文（試合のまとめ＋PLAYER LOG へのリンク）
+function classroomText(m){
+  const ev = evOf(m.id), r = m.review || {}, base = state.meta.playerLogUrl, url = base ? `${base}${base.includes('?') ? '&' : '?'}match=${encodeURIComponent(m.id)}` : '（PLAYER LOG のURL）';   // ?match=試合id で、PLAYER LOG がその試合を開けるようにする
+  const scorers = ev.filter(e => isGoalEv(e) && e.team === 'us').map(e => e.type === 'og' ? 'OG' : e.num ? `#${e.num} ${family(e.name)}` : '').filter(Boolean);
+  return [`【振り返り】${dateJP(m.date)} vs ${m.opponent}（${m.tournament || m.kind}）`,
+    `結果：${m.ourName} ${goalsOf(ev, 'us')}-${goalsOf(ev, 'them')} ${m.opponent}${scorers.length ? `　得点：${scorers.join('、')}` : ''}`,
+    r.next ? `次の練習でやること：${r.next.replace(/\n/g, ' ')}` : '', (r.tags || []).length ? `意識する原則：${r.tags.join('・')}` : '',
+    '', 'PLAYER LOG の「試合の振り返り」から、この試合の振り返りを入力してください。', url].filter((x, i) => x !== '' || i === 4).join('\n');
+}
+function classroomSheet(m){
+  if(!m) return;
+  const t = classroomText(m), noUrl = !state.meta.playerLogUrl, notSynced = !m.pushedAt || m.dirty || evOf(m.id).some(e => !e.synced);
+  openModal({ title:'📮 振り返りの配信（Classroom 用）', size:'wide',
+    body:`${notSynced ? '<div class="note-banner">この試合はまだスプレッドシートに同期していません。先に「☁️ ドライブへ同期」を押すと、PLAYER LOG に試合のまとめと場面が出ます。</div>' : ''}
+      ${noUrl ? '<div class="note-banner">⚙ 設定の「PLAYER LOG のURL」を入れると、文の最後にリンクが入ります。</div>' : ''}
+      <p style="font-size:13px;margin:0">Classroom の「課題」や「お知らせ」に貼り付けて配ります。</p>
+      <textarea id="crText" style="width:100%;min-height:200px;border-radius:10px;padding:10px;background:var(--surface-2);color:var(--ink);border:1px solid var(--line);font-size:14px">${esc(t)}</textarea>`,
+    actions:[{ label:'閉じる' }, ...(noUrl ? [] : [{ label:'PLAYER LOG を開く', onClick:() => window.open(state.meta.playerLogUrl, '_blank') }]),
+      { label:'📋 コピー', kind:'primary', onClick:() => { const v = t; navigator.clipboard?.writeText ? navigator.clipboard.writeText(v).then(() => toast('コピーしました。Classroom に貼り付けてください'), () => showCopy(v)) : showCopy(v); } }] });
+}

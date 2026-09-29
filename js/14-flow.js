@@ -226,7 +226,7 @@ function viewPost(){
     <section class="card panel">
       <div class="hd"><h3>🧑‍🎓 選手の振り返り（Classroom）</h3></div>
       <p style="font-size:13px;margin:0">この試合のまとめを添えて、選手に振り返りを配信します。提出された振り返りは「チームの振り返り」と「選手ポートフォリオ」にたまっていきます。</p>
-      <div class="row" style="justify-content:flex-start"><button class="btn" data-classroom type="button">📮 振り返りを配信（Googleドライブ連携が必要）</button>
+      <div class="row" style="justify-content:flex-start"><button class="btn primary" data-classroom="${m.id}" type="button">📮 振り返りを配信（Classroom用の文を作る）</button>
         <button class="btn" data-openmatch="${m.id}" type="button">📊 データ分析を見る</button></div>
     </section>
     <section class="card panel delzone"><div class="hd"><h3>🗑 この試合を削除</h3><span class="muted" style="font-size:12px">試しに記録した試合などを消します。元に戻せません</span></div>
@@ -402,6 +402,7 @@ function gasSettingsHTML(){
     <p style="font-size:12.5px">マスターのスプレッドシートに付けたGASのWebアプリURLと合言葉を入れると、同期のときに<b>試合結果を書き足し</b>、<b>名簿・予定を読み込み</b>ます。設定方法は同梱の「GAS設定手順」を見てください。</p>
     <label class="field">WebアプリのURL<input id="gasUrl" value="${esc(g.url || '')}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
     <label class="field">合言葉（GAS側と同じもの）<input id="gasKey" value="${esc(g.key || '')}" placeholder="例：pitch-2026" autocomplete="off"></label>
+    <label class="field">PLAYER LOG のURL（振り返りの配信に使います）<input id="plUrl" value="${esc(state.meta.playerLogUrl || '')}" placeholder="https://script.google.com/a/macros/…/exec" autocomplete="off" inputmode="url"></label>
     <div class="row" style="justify-content:flex-start"><button class="btn small" data-gassave type="button">保存</button><button class="btn small" data-gastest type="button">接続テスト</button>
       ${g.lastPull ? `<span class="muted" style="font-size:12px">最終読み込み：${esc(g.lastPull.slice(0,16).replace('T',' '))}</span>` : ''}</div>`;
 }
@@ -474,7 +475,10 @@ async function gasPush(){
       pointsText:[...(m.points?.pre || []).map(x => `[前]${x.eval || ''}${x.text}`), ...(m.points?.ht || []).map(x => `[HT]${x.eval || ''}${x.text}`),
         ...[['good','良'],['issue','課題'],['next','次']].filter(([k]) => m.review?.[k]).map(([k, l]) => `[${l}]${m.review[k].replace(/\n/g, ' ')}`)].join(' / ') }); });
   const events = evs.map(e => { const m = match(e.matchId); return slimForSheet({ ...e, text:m ? evText(e, m) : '' }); });
-  const r = await gasCall('push', { team:team(), roster:state.roster.filter(p => !isSampleP(p)), matches, events });   // 見本の選手はシートに送らない
+  // PLAYER LOG 用：終わった試合（と削除した試合）のまとめと、選手ごとの場面
+  const plMs = state.matches.filter(m => ids.has(m.id) && !m.sample && (m.endedAt || m.deleted)), pl = plMs.map(playerLogRows);
+  const r = await gasCall('push', { team:team(), roster:state.roster.filter(p => !isSampleP(p)), matches, events,
+    summaries:pl.map(x => x.summary), scenes:pl.flatMap(x => x.scenes), sceneMatches:plMs.map(m => m.id) });   // 見本の選手はシートに送らない
   evs.forEach(e => e.synced = true); state.matches.forEach(m => { if(ids.has(m.id)) m.pushedAt = new Date().toISOString(); delete m.dirty; });
   state.matches = state.matches.filter(m => !m.deleted); save.matches();   // 削除した試合は、シートに「削除」を送り終えたら端末から消す
   state.events = state.events.filter(e => !(e.deleted && e.synced));

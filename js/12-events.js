@@ -44,7 +44,7 @@ document.addEventListener('click', e => {
   if(d.peval){ const [k, i, v] = d.peval.split(':'), m = match(state.ui.postMatch); const it = m?.points?.[k]?.[+i];
     if(it){ it.eval = it.eval === v ? null : v; m.dirty = true; save.matches(); render(); } return; }
   if(d.export){ exportReport(d.export); return; }
-  if('classroom' in d){ openModal({ title:'📮 振り返りの配信', body:`<p>Classroomへの配信は、Googleドライブ連携（GAS）を設定すると使えるようになります（次の段階で実装します）。</p><p style="font-size:13px">配信すると、この試合のまとめ付きの振り返りページが選手に届き、提出された振り返りが「チームの振り返り」と「選手ポートフォリオ」にたまります。</p>`, actions:[{ label:'閉じる', kind:'primary' }] }); return; }
+  if(d.classroom !== undefined){ classroomSheet(match(d.classroom) || match(state.ui.postMatch)); return; }
   if('import' in d){ importSheet(); return; }
   if(d.dmode){ state.ui.dataMode = d.dmode; state.ui.dataMatch = null; state.ui.dataPeriod = 'all'; state.ui.fmPeriod = null; render(); return; }
   if('goteams' in d){ state.ui.screen = 'teams'; render(); $('#main').scrollTop = 0; return; }
@@ -158,7 +158,7 @@ $('#sheet').addEventListener('click', e => {
   if('imppull' in d){ gasPull().then(r => { closeSheet(); toast(`Googleドライブから名簿${r.players}人を読み込みました`); render(); }).catch(err => toast(`読み込めませんでした（${err.message}）`)); return; }
   if(d.impmode){ f.mode = d.impmode; importPreview(f.rows || []); return; }
   if('impgo' in d){ importGo(); return; }
-  if('gassave' in d){ state.meta.gas = { ...(state.meta.gas || {}), url:$('#gasUrl').value.trim(), key:$('#gasKey').value.trim() }; save.meta(); toast('Googleドライブ連携の設定を保存しました'); return; }
+  if('gassave' in d){ state.meta.gas = { ...(state.meta.gas || {}), url:$('#gasUrl').value.trim(), key:$('#gasKey').value.trim() }; state.meta.playerLogUrl = ($('#plUrl')?.value || '').trim(); save.meta(); toast('Googleドライブ連携の設定を保存しました'); return; }
   if('gastest' in d){ state.meta.gas = { ...(state.meta.gas || {}), url:$('#gasUrl').value.trim(), key:$('#gasKey').value.trim() }; save.meta();
     gasCall('ping').then(r => toast(`接続できました：${r.name || 'マスター'}`)).catch(err => toast(`接続できませんでした（${err.message}）`)); return; }
   if('recorders' in d){ recorderSheet(); return; }
