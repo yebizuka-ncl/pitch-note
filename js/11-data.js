@@ -64,8 +64,7 @@ function viewData(){
       </select>
       ${single ? `<div class="seg2" role="group" aria-label="集計範囲"><button type="button" data-dper="all" aria-pressed="${per==null}">全体</button>${single.periods.map((p, i) => p.kind === 'pk' ? '' : `<button type="button" data-dper="${i}" aria-pressed="${per===i}">${esc(p.label)}</button>`).join('')}</div>` : ''}
       ${single && !single.sample ? `<button class="btn small" data-delmatch="${single.id}" type="button">🗑 この試合を削除</button>` : ''}
-      ${hasSample ? '<button class="btn small" data-clearsample type="button">サンプルを削除</button>' : '<button class="btn small" data-sample type="button">サンプルの1日を追加</button>'}
-      <button class="ai-btn" data-ai type="button">🤖 Gemini APIでAI分析レポートを生成</button>
+      ${hasSample ? '<button class="btn small" data-clearsample type="button">サンプルを削除</button>' : ''}
     </div>
     ${single && single.kind === '紅白戦' ? '<div class="note-banner">紅白戦は、日のまとめ・選手別の集計には含まれません（この画面では個別に確認できます）。</div>' : ''}
     <div class="dgrid">
@@ -141,9 +140,8 @@ function viewData(){
   </div>`;
 }
 // シュート（足）・CK・FKの内訳
-function breakdownPanel(ev){
+function breakdownRows(ev){
   const shots = t => ev.filter(e => e.type === 'shot' && e.team === t);
-  const cell = a => a.n ? `<b class="num" style="font-size:18px">${a.n}</b> <small class="muted">${a.sub}</small>` : '<span class="muted">—</span>';
   const footRows = [...FEET, { id:null, label:'未入力' }].map(f => { const c = t => { const a = shots(t).filter(e => (e.foot || null) === f.id);
       return { n:a.length, sub:a.length ? `枠内${a.filter(e => e.result === 'goal' || e.result === 'on').length}・G${a.filter(e => e.result === 'goal').length}` : '' }; };
     return { label:f.label, u:c('us'), t:c('them') }; }).filter(r => r.u.n || r.t.n);
@@ -155,6 +153,11 @@ function breakdownPanel(ev){
       const sh = pl.id === 'shot' ? ev.filter(x => x.type === 'shot' && x.fkShot && x.team === t && a.some(f => f.matchId === x.matchId && f.period === x.period && f.sec === x.sec)) : [];
       return { n:a.length, sub:pl.id === 'shot' && a.length ? `枠内${sh.filter(x => x.result === 'goal' || x.result === 'on').length}・G${sh.filter(x => x.result === 'goal').length}` : '' }; };
     return { label:`FK→${pl.label}`, u:c('us'), t:c('them') }; })).filter(r => r.u.n || r.t.n);
+  return { footRows, ckRows, fkRows };
+}
+function breakdownPanel(ev){
+  const { footRows, ckRows, fkRows } = breakdownRows(ev);
+  const cell = a => a.n ? `<b class="num" style="font-size:18px">${a.n}</b> <small class="muted">${a.sub}</small>` : '<span class="muted">—</span>';
   const tbl = (title, rows) => `<div><h4 style="margin:0 0 6px;font-size:12.5px;font-weight:900;color:var(--ink-2)">${title}</h4>${rows.length ? `<table>
     <thead><tr><th></th><th class="us">自チーム</th><th class="them">相手</th></tr></thead>
     <tbody>${rows.map(r => `<tr><td>${r.label}</td><td>${cell(r.u)}</td><td>${cell(r.t)}</td></tr>`).join('')}</tbody></table>` : '<div class="muted" style="font-size:12.5px">まだありません</div>'}</div>`;

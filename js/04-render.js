@@ -2,7 +2,7 @@
 /* =========================================================
    4. 描画：共通
    ========================================================= */
-const TITLES = { post:['試合後','FULL TIME'], teams:['チームを選ぶ','SELECT TEAM'], home:['ホーム','MATCH DAY'], roster:['選手リスト','SQUAD'], record:['試合記録','LIVE'], data:['データ・AI分析','ANALYSIS'] };
+const TITLES = { post:['試合後','FULL TIME'], teams:['チームを選ぶ','SELECT TEAM'], home:['ホーム','MATCH DAY'], roster:['選手リスト','SQUAD'], record:['試合記録','LIVE'], data:['データ分析','ANALYSIS'] };
 function render(){
   const s = state.ui.screen;
   document.body.dataset.screen = s;

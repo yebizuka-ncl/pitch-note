@@ -18,7 +18,8 @@ function teamStats(evs, team){
   };
 }
 const rate = (a, b) => b ? `<small>（${Math.round(a/b*100)}%）</small>` : '';
-function compareTable(evs, usName, themName){
+// 比べる項目（データ画面と PLAYER LOG で共通）。[項目, 自, 相手, 自の割合, 相手の割合, 大事な行, 棒なし]
+function compareRows(evs){
   const u = teamStats(evs, 'us'), t = teamStats(evs, 'them');
   const rows = [
     ['得点', u.goals, t.goals, '', '', true],
@@ -33,6 +34,10 @@ function compareTable(evs, usName, themName){
     ...(u.win + t.win ? [['ボール奪取', u.win, t.win], ['敵陣で奪取', u.winHigh, t.winHigh, rate(u.winHigh, u.win), rate(t.winHigh, t.win)],
       ['奪取→シュート<br><small class="muted">10秒以内</small>', u.winShot, t.winShot, rate(u.winShot, u.win), rate(t.winShot, t.win)]] : []),
   ];
+  return rows;
+}
+function compareTable(evs, usName, themName){
+  const rows = compareRows(evs);
   return `<div class="cmp"><div class="cmp-head"><span>${esc(usName)}</span><span></span><span>${esc(themName)}</span></div>
     ${rows.map(([l, a, b, sa='', sb='', key=false, nobar=false]) => { const mx = Math.max(1, +a || 0, +b || 0);
       return `<div class="cmp-row ${key?'key':''}">

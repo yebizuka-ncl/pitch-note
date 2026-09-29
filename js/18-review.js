@@ -501,7 +501,7 @@ function playerLogRows(m){
     good:r.good || '', issue:r.issue || '', next:r.next || '', principles:(r.tags || []).join('・'),
     best:be ? sceneLabel(be, m) + (m.best.note ? `「${m.best.note}」` : '') : '', bestUrl:be ? (sceneUrl(be, m) || '') : '',
     video:[m.video?.url, ...Object.values(m.video?.per || {})].filter(Boolean).join(' '), played:played.map(p => `#${p.num} ${p.name}（${p.role}）`).join('、'), playedJson:JSON.stringify(played),
-    state:m.deleted ? '削除' : '終了' };
+    state:m.deleted ? '削除' : '終了', teamData:m.deleted ? '' : teamDataJSON(m) };
   const scenes = [], add = (e, pid, kind, text) => { const p = pn(pid); if(!p) return;
     scenes.push({ id:`${e.id}_${pid}_${kind}`, matchId:m.id, date:m.date, opponent:m.opponent, pid, num:p.num, name:p.name, time:`${pShort(m, e.period)} ${clockMark(e.clock)}`, kind, text, url:sceneUrl(e, m) || '' }); };
   if(!m.deleted) ev.forEach(e => {
@@ -510,6 +510,40 @@ function playerLogRows(m){
     if(be && e.id === be.id){ [be.playerId, be.goal?.assistId].filter(Boolean).forEach(pid => add(e, pid, 'ベストプレー', m.best.note || 'チームのベストプレー')); }
   });
   return { summary, scenes };
+}
+/* PLAYER LOG の「チームのデータ」用。チーム全体の数字だけを入れる（選手別の出場時間・シュート数は入れない。得点者・アシストは入れてよい）
+   シュートの位置は自チームが右へ攻める向きにそろえた座標（0〜105 × 0〜68） */
+function teamDataOf(m){
+  const ev = evOf(m.id), r1 = v => Math.round(v * 10) / 10;
+  const plain = h => String(h ?? '').replace(/<br>/g, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  const cmp = compareRows(ev).map(([l, u, t, su = '', st = '', key = false, nobar = false]) => {
+    const [lab, sub] = String(l).split('<br>');
+    return { l:plain(lab), s:plain(sub), u:plain(u), t:plain(t), su:plain(su).replace(/[（）]/g, ''), st:plain(st).replace(/[（）]/g, ''), k:key ? 1 : 0, nb:nobar ? 1 : 0 };
+  });
+  const res = { goal:'g', on:'o', off:'f', block:'b' };
+  const shots = ev.filter(e => e.type === 'shot' && e.x != null).map(e => [r1(e.x), r1(e.y), e.team === 'us' ? 0 : 1, res[e.result] || 'f', e.pk ? 1 : 0]);
+  const wins = ev.filter(e => e.type === 'win' && e.x != null).map(e => [r1(e.x), r1(e.y), e.team === 'us' ? 0 : 1]);
+  const per = m.periods.map((p, i) => ({ p, i })).filter(x => x.p.kind !== 'pk').map(({ p, i }) => { const pe = ev.filter(e => e.type === 'shot' && e.period === i);
+    return { l:p.label, u:pe.filter(e => e.team === 'us').length, t:pe.filter(e => e.team === 'them').length }; });
+  const tb = timeBuckets([m]).map(b => ({ l:b.label, f:b.from, to:b.to ?? null, at:b.at ? 1 : 0, u:[b.us.sh, b.us.g], t:[b.them.sh, b.them.g] }));
+  const bdr = breakdownRows(ev), bd = k => bdr[k].map(r => ({ l:r.label, u:r.u.n, us:r.u.sub, t:r.t.n, ts:r.t.sub }));
+  const cc = causeCount(ev);
+  const goalsAll = ev.filter(isGoalEv), gU = goalsAll.filter(g => g.team === 'us' && g.goal), gT = goalsAll.filter(g => g.team === 'them' && g.goal);
+  const cr = (items, get) => items.map(it => ({ l:it.label, u:gU.filter(g => get(g) === it.id).length, t:gT.filter(g => get(g) === it.id).length })).filter(r => r.u || r.t);
+  const ga = [['局面', cr(PHASES, g => g.goal.phase)], ['始まり方', cr(ALL_DETAILS, g => g.goal.detail)], ['崩し方（ラストパス）', cr(LASTPASS, g => g.goal.lastPass)],
+    ['崩したレーン', cr(LANES.map(x => ({ id:x.id, label:x.short })), g => g.goal.lane)], ['フィニッシュ', cr(FEET, g => g.goal.foot)]].filter(x => x[1].length).map(([h, rows]) => ({ h, rows }));
+  const goals = goalsAll.map(g => ({ tm:g.team, p:pLabel(m, g.period), c:clockMark(g.clock),
+    who:g.type === 'og' ? 'OG' : g.team === 'us' ? (g.num ? `#${g.num} ${g.name}` : player(g.playerId) ? `#${player(g.playerId).num} ${player(g.playerId).name}` : '') : (g.goal?.oppNum ? `相手#${g.goal.oppNum}` : ''),
+    pk:g.pk ? 1 : 0, ctx:goalContext(g), d:g.type === 'og' ? '' : goalDesc(g) }));
+  return { v:1, us:m.ourName || team().short || '自チーム', cmp, shots, wins, per, tb, ft:bd('footRows'), ck:bd('ckRows'), fk:bd('fkRows'),
+    ca:{ total:cc.total, tagged:cc.tagged, rows:cc.rows.map(r => ({ l:r.label, n:r.n })) }, ga, goals, hints:dataHints(m) };
+}
+// セルの上限（50,000字）をこえないように、大きすぎるときは位置の点を省く
+function teamDataJSON(m){
+  const d = teamDataOf(m); let j = JSON.stringify(d);
+  if(j.length > 45000){ d.wins = []; j = JSON.stringify(d); }
+  if(j.length > 45000){ d.shots = []; j = JSON.stringify(d); }
+  return j;
 }
 // 試合後：Classroom に貼る文（試合のまとめ＋PLAYER LOG へのリンク）
 function classroomText(m){

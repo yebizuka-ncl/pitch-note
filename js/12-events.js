@@ -113,11 +113,6 @@ document.addEventListener('click', e => {
   if('clearsample' in d){ const ids = new Set(teamMatches().filter(x => x.sample).map(x => x.id));
     state.matches = state.matches.filter(x => !ids.has(x.id)); state.events = state.events.filter(x => !ids.has(x.matchId));
     save.matches(); save.events(); state.ui.dataDate = null; state.ui.dataMatch = null; toast('サンプルを削除しました'); render(); return; }
-  if('ai' in d){
-    openModal({ title:'🤖 AI分析レポート', body:`<p>Geminiにデータを送信してレポートを生成します。</p>
-      <p style="font-size:13px">送る内容：選んだ日・試合のシュート（位置・結果）、CK・FK、得点・失点の分析、フォーメーションの変更、★マークのメモ、選手の出場時間。現在はプロトタイプのため、実際には送信されません。</p>`,
-      actions:[{ label:'閉じる', kind:'primary' }] });
-  }
 });
 $('#sheet').addEventListener('click', e => {
   const edt = e.target.closest('[data-edit]');

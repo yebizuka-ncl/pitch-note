@@ -465,8 +465,8 @@ function slimForSheet(o){
   if(JSON.stringify(c).length >= SHEET_MAX) Object.keys(c).forEach(k => { if(JSON.stringify(c[k] ?? '').length > 8000) c[k] = omit; });
   return c;
 }
-// PLAYER LOG 用の書き出しの版。上げると、終わった試合を次の同期で全部書き直す（ver.38：Apps Script の版も確かめるようにしたため 3）
-const PL_SENT_V = 3;
+// PLAYER LOG 用の書き出しの版。上げると、終わった試合を次の同期で全部書き直す（ver.39：チームのデータを足したため 4）
+const PL_SENT_V = 4;
 // その試合のチームの名簿で、PLAYER LOG 用のまとめと場面を作る（別のチームを開いたまま同期しても正しいチーム名・選手になる）
 function playerLogRowsOfTeam(m){
   const saved = state.roster, tm = state.teams.find(t => t.id === m.teamId) || team();
