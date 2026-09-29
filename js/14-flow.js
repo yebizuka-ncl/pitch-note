@@ -412,7 +412,12 @@ async function gasCall(action, payload){
   const ac = new AbortController(), to = setTimeout(() => ac.abort(), 45000);
   try{
     const res = await fetch(`${g.url}?action=${action}&key=${encodeURIComponent(g.key || '')}`, { signal:ac.signal, ...(payload ? { method:'POST', body:JSON.stringify({ key:g.key, action, ...payload }) } : {}) });
-    const data = await res.json(); if(!data.ok) throw new Error(data.error || 'error'); return data;
+    const text = await res.text(); let data;
+    try{ data = JSON.parse(text); }
+    catch(_){ // Googleから表のデータではなくページ（エラー画面など）が返ってきたとき、その中身の手がかりを出す
+      const hint = text.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+      throw new Error(`${action === 'push' ? '送信' : '読み込み'}のとき、Googleから想定外の返事（HTTP ${res.status}）：${hint || '空'}`); }
+    if(!data.ok) throw new Error(`${action === 'push' ? '送信' : '読み込み'}：${data.error || 'error'}`); return data;
   }catch(e){ throw e.name === 'AbortError' ? new Error('時間切れ：45秒たっても返事がありません') : e; }
   finally{ clearTimeout(to); }
 }
@@ -446,16 +451,26 @@ async function gasPull(){
   return { players:players.length, schedule:(d.schedule || []).length };
 }
 // 試合結果と記録を書き足す（id で上書き保存。削除した記録は deleted の印で送る）
+// スプレッドシートの1つのマスには50,000文字までしか入らない。Apple Pencilの作図が多い記録・試合は、作図だけ省いて送る（作図はiPadに残る）
+const SHEET_MAX = 45000;
+function slimForSheet(o){
+  if(JSON.stringify(o).length < SHEET_MAX) return o;
+  const c = JSON.parse(JSON.stringify(o)), omit = { omitted:true, note:'作図はiPadに保存（大きいためシートでは省略）' };
+  ['sketch', 'buildup'].forEach(k => { if(c[k]) c[k] = omit; });
+  if(c.boards) c.boards = c.boards.map(b => ({ label:b.label, ...omit }));
+  if(JSON.stringify(c).length >= SHEET_MAX) Object.keys(c).forEach(k => { if(JSON.stringify(c[k] ?? '').length > 8000) c[k] = omit; });
+  return c;
+}
 async function gasPush(){
   const evs = unsynced(), ids = new Set(evs.map(e => e.matchId));
   // 変更のあった試合と、まだ一度も送っていない試合（前の版で作った予定など）を送る。見本の試合は送らない
   state.matches.filter(m => (m.dirty || !m.pushedAt) && !m.sample).forEach(m => ids.add(m.id));
   const matches = state.matches.filter(m => ids.has(m.id) && !m.sample).map(m => { const ev = evOf(m.id), pk = pkState(m, ev);
-    return { ...m, teamName:(state.teams.find(t => t.id === m.teamId) || {}).name, scoreUs:goalsOf(ev,'us'), scoreThem:goalsOf(ev,'them'), pk:pk.na + pk.nb ? `${pk.a}-${pk.b}` : '',
+    return slimForSheet({ ...m, teamName:(state.teams.find(t => t.id === m.teamId) || {}).name, scoreUs:goalsOf(ev,'us'), scoreThem:goalsOf(ev,'them'), pk:pk.na + pk.nb ? `${pk.a}-${pk.b}` : '',
       recordersText:(m.recorders || []).map(recorderLabel).join('、'),
       pointsText:[...(m.points?.pre || []).map(x => `[前]${x.eval || ''}${x.text}`), ...(m.points?.ht || []).map(x => `[HT]${x.eval || ''}${x.text}`),
-        ...[['good','良'],['issue','課題'],['next','次']].filter(([k]) => m.review?.[k]).map(([k, l]) => `[${l}]${m.review[k].replace(/\n/g, ' ')}`)].join(' / ') }; });
-  const events = evs.map(e => { const m = match(e.matchId); return { ...e, text:m ? evText(e, m) : '' }; });
+        ...[['good','良'],['issue','課題'],['next','次']].filter(([k]) => m.review?.[k]).map(([k, l]) => `[${l}]${m.review[k].replace(/\n/g, ' ')}`)].join(' / ') }); });
+  const events = evs.map(e => { const m = match(e.matchId); return slimForSheet({ ...e, text:m ? evText(e, m) : '' }); });
   const r = await gasCall('push', { team:team(), roster:state.roster.filter(p => !isSampleP(p)), matches, events });   // 見本の選手はシートに送らない
   evs.forEach(e => e.synced = true); state.matches.forEach(m => { if(ids.has(m.id)) m.pushedAt = new Date().toISOString(); delete m.dirty; });
   state.matches = state.matches.filter(m => !m.deleted); save.matches();   // 削除した試合は、シートに「削除」を送り終えたら端末から消す
