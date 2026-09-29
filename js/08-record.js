@@ -22,24 +22,28 @@ function viewRecord(){
       <button class="btn small perbtn" data-periods type="button">${esc(per.label)} ▾</button>
       ${per.kind === 'pk' ? '' : running
         ? `<button class="tbtn stop hold" data-hold="stop" type="button" title="長押しで停止">❚❚ STOP<i></i></button>`
-        : `<button class="tbtn ${!per.kickoff ? 'toss' : !started ? 'kick' : 'start'}" data-timer="toggle" type="button">${!per.kickoff ? '🪙 COIN TOSS' : !started ? '⚽ KICK OFF' : '▶ START'}</button>`}
+        : !started ? koInlineHTML(m, per)
+        : `<button class="tbtn start" data-timer="toggle" type="button">▶ START</button>`}
       ${per.kind === 'pk' ? '' : `<button class="tbtn endper hold" data-hold="endper" data-endper type="button" hidden>⏹ ${esc(per.label)}終了<i></i></button>`}
-      ${per.kind === 'pk' ? '' : t.brk ? `<div class="brkmini" id="brkbar" title="目安${BREAKS[t.brk.type].min}分・試合の時計は動いたまま"><span>${BREAKS[t.brk.type].icon}</span><span class="num" data-brk>0:00</span>
+      ${per.kind === 'pk' || !started ? '' : t.brk ? `<div class="brkmini" id="brkbar" title="目安${BREAKS[t.brk.type].min}分・試合の時計は動いたまま"><span>${BREAKS[t.brk.type].icon}</span><span class="num" data-brk>0:00</span>
           <button class="btn small" data-brkend type="button">終了</button></div>` : `
         <button class="tbtn reset icon hold" data-hold="reset" type="button" aria-label="長押しで時計を0に戻す">↺<i></i></button>
         <button class="brkbtn" data-brkopen type="button" aria-label="飲水タイム・クーリングブレイク">💧</button>`}
       <span class="spacer"></span>
       <button class="btn small ${state.lineup.length ? '' : 'attn'}" data-members type="button">👥 ${started || per.kind === 'pk' ? '交代' : 'スタメン'}</button>
-      <button class="btn small" data-halftime type="button">📊 HT</button>
+      ${m.periods.some((p, i) => isStarted(m, i)) ? '<button class="btn small" data-halftime type="button">📊 HT</button>' : ''}
+      ${!started && per.kind !== 'pk' ? '' : `<button class="btn small lvchip lv-${LV()}" data-settings type="button" title="記録の量・担当を変える">📝 ${LEVELS.find(l => l.id === LV()).label}${ROLE() !== 'all' ? `｜${ROLES.find(r => r.id === ROLE()).label}` : ''}</button>`}
     </section>`;
   // 画面下の1行：状況に応じて「選手を選ぶ案内」「★のタグ」「最新の記録」を出し分け
   const last = ev[ev.length - 1], pick = state.ui.pick, mt = state.ui.markTag;
   let tickerBody;
-  if(pick && Date.now() < pick.until) tickerBody = `<span class="pickhint">👆 ${pick.kind === 'og' ? 'オウンゴールの選手' : '打った選手'}を下の盤でタップ（${esc(teamName(m, pick.side))}の丸が光っています）</span><span style="flex:1"></span><button class="btn small" data-pickskip type="button">スキップ</button>`;
+  const causeT = causeTickerHTML();
+  if(pick && Date.now() < pick.until) tickerBody = `<span class="pickhint">👆 ${pick.kind === 'og' ? 'オウンゴールの選手' : '打った選手'}を下の盤でタップ（${esc(teamName(m, pick.side))}の丸が光っています）</span><span style="flex:1"></span><button class="btn small qbtn" data-pickq type="button">？ わからない（あとで確認）</button><button class="btn small" data-pickskip type="button">スキップ</button>`;
+  else if(causeT) tickerBody = causeT;
   else if(mt && Date.now() < mt.until) tickerBody = `<span class="section-title">★ どんな場面？</span><div class="chips mtags">${MARK_TAGS.map(x => `<button type="button" data-mtag="${x.id}">${x.label}</button>`).join('')}</div><span style="flex:1"></span>`;
   else tickerBody = `<span class="section-title">最新</span>
-      ${last ? `<span class="t num">${esc(pShort(m, last.period))} ${last.type === 'pkso' ? '' : last.clock}</span><span class="tx" ${last.type === 'kickoff' ? '' : `data-edit="${last.id}"`}>${esc(evText(last, m))}</span>`
-        : '<span class="muted" style="font-size:13px">🪙 COIN TOSS → ✓ READY → ⚽ KICK OFF の順に進みます。</span>'}
+      ${last ? `<span class="t num">${esc(pShort(m, last.period))} ${last.type === 'pkso' ? '' : last.clock}</span><span class="tx" ${last.type === 'kickoff' ? '' : `data-edit="${last.id}"`}>${esc(flagText(last) + evText(last, m))}</span>${['kickoff','formation'].includes(last.type) ? '' : `<button class="btn small qbtn ${last.check ? 'on' : ''}" data-flag="${last.id}" type="button" title="あとで確認する印">？${last.check ? ' 要確認' : ''}</button>`}`
+        : '<span class="muted" style="font-size:13px">上の段で 🪙 キックオフのチーム → 🥅 攻める方向 → ⚽ KICK OFF の順に進みます。</span>'}
       <span style="flex:1"></span>
       ${pend ? `<button class="btn small" data-goaledit="${ev.filter(isPending)[0].id}" type="button">⚽ 状況 未入力${pend}</button>` : ''}
       <button class="btn small" data-video type="button">${m.videoStart ? `🎥 <span class="num" data-vclock>--:--</span>` : '🎥 撮影開始'}</button>
@@ -55,25 +59,29 @@ function viewRecord(){
     // キックオフ前：両チームのスタメンを大きく表示（相手の背番号はここで入力）
     center = `<div class="pitch-area"><div class="pitch-frame"><div class="thirds-head"><span></span><span>${esc(per.label)}のスタメン</span><span></span></div>
         <div class="pitch lbig">${boardLayer(m, flip, false)}</div></div></div>
-      <div class="readout"><span class="muted" style="font-weight:700">${per.kickoff ? '準備OK！ ⚽ KICK OFF で時計がスタートします ／ ' : ''}相手の丸 → 背番号 ／ チーム名 → フォーメーション変更</span></div>`;
+      <div class="readout"><span class="muted" style="font-weight:700">${per.kickoff && per.attack ? '準備OK！ 笛が鳴ったら ⚽ KICK OFF ／ ' : '上の 🪙 キックオフのチームと 🥅 攻める方向を選ぶと ⚽ KICK OFF が押せます ／ '}相手の丸 → 背番号 ／ チーム名 → フォーメーション変更</span></div>`;
+  } else if(ROLE() === 'bench'){
+    center = `<div class="pitch-area"><div class="pitch-frame"><div class="thirds-head"><span></span><span>交代・カード：選手の丸をタップ</span><span></span></div>
+        <div class="pitch lbig">${boardLayer(m, flip, false)}</div></div></div>
+      <div class="readout"><span class="muted" style="font-weight:700">交代・時間係の画面です。シュートを記録するときは 📝 から担当を「全部」か「シュート係」に</span></div>`;
   } else {
     center = `<div class="pitch-area named"><div class="pname"><b>SHOT MAP</b><span>シュートマップ</span><small>シュート・FK・CKをタップ</small></div><div class="pitch-frame">${pitchHTML({ tap:true, dots:shots, pos:state.ui.pos, flip })}</div></div>
       <div class="readout" id="pitchReadout"><span class="muted" style="font-weight:700">自チームは${flip ? '◀ 左' : '右 ▶'}へ攻撃。シュート・FK・CK：ピッチをタップ（押したままずらすと微調整）</span></div>
       <div class="lbwrap"><div class="lboard ${pick && Date.now() < pick.until ? 'picking pick-' + pick.side : ''}">${boardLayer(m, flip, true)}</div><span class="bname"><b>FORMATION</b> フォーメーション</span></div>`;
   }
   return `
-  <div class="rec rec2 ${state.meta.settings.lefty ? 'lefty' : ''} ${stepBar ? 'withstep' : ''}">
+  <div class="rec rec2 role-${ROLE()} ${state.meta.settings.lefty ? 'lefty' : ''} ${stepBar ? 'withstep' : ''}">
     ${stepBar}
     ${strip}
     <section class="card pitch-wrap" id="pitchCol">${center}</section>
     <section class="card panel-ev" id="evCol">
-      <div class="evhint">⚽ シュート・FKは<br><b>ピッチをタップ</b></div>
-      <div class="evgrid2">
+      ${ROLE() === 'bench' && started ? '<div class="evhint">交代・時間係</div>' : '<div class="evhint">⚽ シュート・FKは<br><b>ピッチをタップ</b></div>'}
+      ${ROLE() === 'bench' && started ? benchGridHTML() : `<div class="evgrid2">
         <button type="button" class="ev2 ck" data-ev="ck"><span class="en">CK</span><span class="jp">コーナー</span></button>
         <button type="button" class="ev2" data-ev="pk"><span class="en">PK</span><span class="jp">ペナルティ</span></button>
-        <button type="button" class="ev2" data-ev="og"><span class="en">OG</span><span class="jp">オウンゴール</span></button>
         <button type="button" class="ev2 mark" data-mark><span class="en">★</span><span class="jp">動画メモ</span></button>
-      </div>
+        <button type="button" class="ev2" data-ev="og"><span class="en">OG</span><span class="jp">オウンゴール</span></button>
+      </div>`}
       <button class="btn small" data-addpast type="button">＋ 記録を追加（あとから）</button>
     </section>
     ${ticker}
@@ -90,7 +98,7 @@ const sentOffIds = m => evOf(m.id).filter(e => e.type === 'card' && e.team === '
 // ピッチの向きに合わせた両チームのフォーメーション盤（選手をタップ → 交代・カードなど）
 function boardLayer(m, flip, small){
   const f = fmCur(), cs = cardState(m);
-  const us = f.us.shape ? slotsOf(f.us.shape, 'us') : [], th = f.them.shape ? slotsOf(f.them.shape, 'them') : [];
+  const us = f.us.shape ? movedSlots(f.us.shape, 'us', f.us.pos) : [], th = f.them.shape ? movedSlots(f.them.shape, 'them', f.them.pos) : [];
   const at = s => { const [x, y] = D(s.x, s.y, flip); return `left:${pct(x,105)};top:${pct(y,68)}`; };
   const badge = c => c ? `<i class="cd ${c}"></i>` : '';
   const usSide = flip ? 'left:auto;right:8px' : 'left:8px;right:auto', thSide = flip ? 'right:auto;left:8px' : 'left:auto;right:8px';
@@ -99,12 +107,15 @@ function boardLayer(m, flip, small){
   h += `<button type="button" class="bteam us clk" data-bfm="us" style="${usSide}"><b>${f.us.shape || '—'}</b><span>${esc(m.ourName)} ▾</span></button>`;
   h += `<button type="button" class="bteam them clk" data-bfm="them" style="${thSide}"><b>${f.them.shape || '？'}</b><span>${esc(m.opponent)} ▾</span></button>`;
   const pop = state.ui.pop, swp = state.ui.swapFrom;
-  h += us.map((s, i) => { const p = player(f.us.slots[i]);
+  const gt = state.ui.goalTag && Date.now() < state.ui.goalTag.until ? state.ui.goalTag : null;
+  h += us.map((s, i) => { const p = player(f.us.slots[i]), g = p ? playerGoals(m, p.id).length : 0;
     return `<button type="button" data-bp="us:${i}" class="fp us ${small ? 'sm' : ''} ${p ? '' : 'empty'} ${swp === i || (pop?.side === 'us' && pop.idx === i) ? 'sel' : ''}" style="${at(s)}" aria-label="${s.full}">
-      ${small ? '' : `<span class="pl">${s.label}</span>`}<span class="c">${p ? p.num : s.label}${badge(p && cs.us[p.id])}</span><span class="n">${p ? esc(family(p.name)) : (small ? s.label : '&nbsp;')}</span></button>`; }).join('');
-  h += th.map((s, i) => { const n = f.them.slots[i];
-    return `<button type="button" data-bp="them:${i}" class="fp them ${small ? 'sm' : ''} ${n ? '' : 'empty'} ${pop?.side === 'them' && pop.idx === i ? 'sel' : ''}" style="${at(s)}" aria-label="相手 ${s.full}">
-      <span class="c">${n ?? '?'}${badge(n != null && cs.them[n])}</span><span class="n">${s.label}</span></button>`; }).join('');
+      ${small ? '' : `<span class="pl">${s.label}</span>`}<span class="c">${p ? p.num : s.label}${badge(p && cs.us[p.id])}${g ? `<i class="gb">⚽${g > 1 ? g : ''}</i>` : ''}</span><span class="n">${p ? esc(family(p.name)) : (small ? s.label : '&nbsp;')}</span>
+      </button>`; }).join('');
+  if(gt) h += `<span class="gtagc">${esc(gt.text)}</span>`;
+  h += th.map((s, i) => { const n = f.them.slots[i], o = n != null ? oppNote(m, n) : {}, tg = oppTagText(o);
+    return `<button type="button" data-bp="them:${i}" class="fp them ${small ? 'sm' : ''} ${n ? '' : 'empty'} ${o.key ? 'key' : ''} ${pop?.side === 'them' && pop.idx === i ? 'sel' : ''}" style="${at(s)}" aria-label="相手 ${s.full}">
+      <span class="c">${n ?? '?'}${badge(n != null && cs.them[n])}${o.key ? '<i class="kb">★</i>' : ''}</span><span class="n">${s.label}</span>${tg ? `<i class="ot">${tg}</i>` : ''}</button>`; }).join('');
   if(!f.us.shape) h += `<button type="button" class="bover" style="${half(flip)}" data-members>👥 スタメンを設定</button>`;
   if(!f.them.shape) h += `<button type="button" class="bover them" style="${half(!flip)}" data-oppshape>相手のフォーメーションを選ぶ</button>`;
   return h;
@@ -129,13 +140,14 @@ function popHTML(){
     const ckTeam = pos.x >= 98 ? 'us' : pos.x <= 7 ? 'them' : null, corner = ckTeam && (pos.y <= 8 || pos.y >= 60);
     const ckSide = ckTeam === 'us' ? (pos.y < 34 ? 'L' : 'R') : (pos.y > 34 ? 'L' : 'R');
     return head + (corner ? `<div class="rrow ${ckTeam} ck"><span class="lab">${tn(ckTeam)} ${ckSide === 'L' ? '左' : '右'}CK</span><div class="rbtns">
-        <button type="button" data-pck="${ckTeam}:${ckSide}:cross">クロス</button><button type="button" data-pck="${ckTeam}:${ckSide}:short">ショート</button></div></div>` : '')
+        <button type="button" data-pck="${ckTeam}:${ckSide}:">CKを記録</button></div></div>` : '')
       + order.map(t => resRow(t, RESULTS)).join('')
-      + `<div class="fkrow"><span>FK</span><button type="button" data-pfk="us" class="us">${tn('us')}</button><button type="button" data-pfk="them" class="them">${tn('them')}</button></div>`;
+      + (LV() === 'full' ? `<div class="fkrow"><span>奪取</span><button type="button" data-pwin="us" class="us">${tn('us')}が奪った</button><button type="button" data-pwin="them" class="them">${tn('them')}が奪った</button></div>` : '')
+      + order.map(t => `<div class="fkrow"><span>FK</span><b class="fkt ${t}">${tn(t)}</b><button type="button" data-pfkq="${t}:kick" class="${t}">シュート以外</button><button type="button" data-pfkq="${t}:shot" class="${t}">直接シュート</button></div>`).join('');
   }
   if(p.kind === 'ck') return `<div class="pop-h"><b>CK</b><span class="muted">左右は攻める向きで</span>${x}</div>
-    ${['us','them'].map(t => `<div class="rrow ${t}"><span class="lab">${tn(t)}</span><div class="rbtns r4">${CK_TYPES.map(c => `<button type="button" data-pck="${t}:${c.side}:${c.style}">${c.side === 'L' ? '左' : '右'}・${c.style === 'cross' ? 'クロス' : 'ショート'}</button>`).join('')}</div></div>`).join('')}`;
-  if(p.kind === 'pk') return `<div class="pop-h"><b>PK</b><span class="muted">① コース（キッカーから見て・任意） ② 結果</span>${x}</div>${pkGridHTML(p.course, 'pkc')}${['us','them'].map(t => resRow(t, RESULTS.filter(r => r.id !== 'block'), ':pk')).join('')}`;
+    ${['us','them'].map(t => `<div class="rrow ${t}"><span class="lab">${tn(t)}</span><div class="rbtns">${CK_SIDES.map(c => `<button type="button" data-pck="${t}:${c.id}:">${c.label}</button>`).join('')}</div></div>`).join('')}`;
+  if(p.kind === 'pk') return `<div class="pop-h"><b>PK</b><span class="muted">${LV() === 'easy' ? '結果を選ぶ' : '① コース（キッカーから見て・任意） ② 結果'}</span>${x}</div>${LV() === 'easy' ? '' : pkGridHTML(p.course, 'pkc')}${['us','them'].map(t => resRow(t, RESULTS.filter(r => r.id !== 'block'), ':pk')).join('')}`;
   if(p.kind === 'og') return `<div class="pop-h"><b>オウンゴール</b>${x}</div>
     <div class="pop-act col"><button type="button" data-pog="us">⚽<span>${tn('us')}に1点（相手のOG）</span></button><button type="button" data-pog="them">⚽<span>${tn('them')}に1点（自チームのOG）</span></button></div>`;
   if(p.kind === 'foot'){ const e = state.events.find(v => v.id === p.eventId);
@@ -147,7 +159,8 @@ function popHTML(){
     const cur_ = fm[p.fm].shape, list = Object.keys(FORMATIONS);
     return `<div class="pop-h"><span class="chip ${p.fm}">${esc(teamName(m, p.fm))}</span><b>フォーメーション</b>${x}</div>
       <div class="wheel">${p.fm === 'them' ? `<button type="button" data-pfm="" class="${!cur_ ? 'on' : ''}">不明</button>` : ''}${list.map(k => `<button type="button" data-pfm="${k}" class="disp ${cur_ === k ? 'on' : ''}">${k}</button>`).join('')}</div>
-      ${started ? '<div class="pop-note">変えると今の時刻で記録します</div>' : ''}`;
+      ${started ? '<div class="pop-note">変えると今の時刻で記録します</div>' : ''}
+      ${hasMoved(fm[p.fm]) ? '<div class="pop-act"><button type="button" data-pfmreset>↺<span>選手の位置を元に戻す</span></button></div>' : '<div class="pop-note">選手の丸は、指で押したままずらすと好きな位置へ動かせます</div>'}`;
   }
   const sl = slotsOf(fm[p.side].shape, p.side)[p.idx];
   if(p.side === 'them'){
@@ -156,12 +169,13 @@ function popHTML(){
       <div class="wheel">${Array.from({ length:99 }, (_, k) => k + 1).map(k => `<button type="button" data-pnum="${k}" class="disp ${fm.them.slots.includes(k) ? 'used' : ''}">${k}</button>`).join('')}</div>`;
     return `<div class="pop-h"><span class="chip them">${sl.full}</span><b class="disp" style="font-size:20px">${n != null ? '#' + n : '背番号'}</b>${cs ? `<i class="cd ${cs} inl"></i>` : ''}${x}</div>
       <div class="wheel">${Array.from({ length:99 }, (_, k) => k + 1).map(k => `<button type="button" data-pnum="${k}" class="disp ${k === n ? 'on' : ''} ${k !== n && fm.them.slots.includes(k) ? 'used' : ''}">${k}</button>`).join('')}</div>
+      ${n != null ? oppNoteHTML(m, n) : ''}
       ${started && n != null ? `<div class="pop-act"><button type="button" data-pact="in">🔁<span>交代</span></button><button type="button" data-pact="Y">🟨<span>警告</span></button><button type="button" data-pact="R">🟥<span>退場</span></button></div>` : ''}`;
   }
   const pl = player(fm.us.slots[p.idx]);
   if(p.mode === 'bench'){
-    const { ok:bench, blocked } = benchOf(m), left = subsLeft(m);
-    if(!left) return `<div class="pop-h"><b>🔁 IN</b>${x}</div><div class="pop-note">交代枠を使い切りました（${subRules(m).limit}人）。👥 交代 からルールを変更できます</div>`;
+    const { ok:bench0, blocked } = benchOf(m), left = subsLeft(m), bench = byGroup(bench0, slotGroupOf(pl?.id));
+    if(!left) return `<div class="pop-h"><b>🔁 IN</b>${x}</div><div class="pop-note">交代の回数（${subRules(m).limit}回）を使い切りました。👥 交代 からルールを変更できます</div>`;
     return `<div class="pop-h"><b>🔁 IN</b><span class="muted">OUT #${pl.num} ${esc(family(pl.name))}</span>${x}</div>
       <div class="pop-note">${subInfoHTML(m)}</div>
       <div class="wheel list">${bench.map(b => `<button type="button" data-pin="${b.id}"><span class="jersey">${b.num}</span>${esc(family(b.name))}${posOf(b) ? `<span class="ptag">${posOf(b)}</span>` : ''}</button>`).join('') || '<div class="pop-note">ベンチに選手がいません</div>'}
@@ -187,7 +201,8 @@ function renderPop(){
   const r = anchor.getBoundingClientRect(), W = el.offsetWidth, H = el.offsetHeight;
   let left = r.right + 10; if(left + W > innerWidth - 8) left = r.left - W - 10;
   const top = Math.max(8, Math.min(innerHeight - H - 8, r.top + r.height / 2 - H / 2));
-  if(p.kind === 'score'){ el.style.left = Math.max(8, Math.min(innerWidth - W - 8, r.left)) + 'px'; el.style.top = (r.bottom + 8) + 'px'; }
+  if(p.kind === 'foot'){ el.style.left = Math.max(8, Math.min(innerWidth - W - 8, r.left + r.width / 2 - W / 2)) + 'px'; el.style.top = Math.max(8, r.top - H - 12) + 'px'; }   // 盤の中央下の得点の札と重ならないよう、選手の上に出す
+  else if(p.kind === 'score'){ el.style.left = Math.max(8, Math.min(innerWidth - W - 8, r.left)) + 'px'; el.style.top = (r.bottom + 8) + 'px'; }
   else { el.style.left = Math.max(8, left) + 'px'; el.style.top = top + 'px'; }
   const wh = el.querySelector('.wheel'), on = wh?.querySelector('.on');
   if(wh && on) wh.scrollTop = on.offsetTop - wh.clientHeight / 2 + on.offsetHeight / 2;
@@ -201,9 +216,12 @@ function popClick(b){
   if(d.pkc){ p.course = p.course === d.pkc ? null : d.pkc; renderPop(); return; }
   if(d.pck){ const [t, side, style] = d.pck.split(':'); recordCK(t, side, style); return; }
   if(d.pfk){ state.ui.pop = { kind:'pitch', mode:'fk', team:d.pfk }; renderPop(); return; }
+  if(d.pfkq){ const [t, pl] = d.pfkq.split(':'); recordFK(t, null, pl); return; }
+  if(d.pwin){ recordWin(d.pwin); return; }
   if(d.pfkp){ const [k, pl] = d.pfkp.split(':'); recordFK(p.team, k, pl); return; }
   if(d.pog){ recordOG(d.pog); return; }
   if(d.pfoot){ const e = state.events.find(v => v.id === p.eventId); if(e){ e.foot = d.pfoot; if(e.goal) e.goal.foot = d.pfoot; e.synced = false; save.events(); } closePop(); return; }
+  if('pfmreset' in d){ fm[p.fm].pos = null; save.fm(); closePop(true); toast('選手の位置を元に戻しました'); render(); return; }
   if(d.pat){ const per = curPer(); per.at = +d.pat; save.matches(); closePop(); toast(`アディショナルタイム +${d.pat}分`); return; }
   if(d.pfm !== undefined){
     fm[p.fm].shape = d.pfm || null;
@@ -222,6 +240,7 @@ function popClick(b){
     for(let j = 1; j < cnt; j++){ const q = (p.idx + j) % cnt; if(fm.them.slots[q] == null){ next = q; break; } }
     if(next >= 0 && !isStarted(m, state.timer.p)) showPop({ side:'them', idx:next }); else closePop();
     return; }
+  if((d.popn || d.popf) && p.side === 'them'){ const n = fm.them.slots[p.idx]; if(n != null) oppNoteClick(d, m, n); return; }
   if(d.pact === 'in'){ p.mode = 'in'; renderPop(); return; }
   if(d.pact === 'Y' || d.pact === 'R'){ giveCard(p.side, p.idx, d.pact); return; }
   if(d.pact === 'sub'){ p.mode = 'bench'; renderPop(); return; }
@@ -255,8 +274,8 @@ function playerMenuHTML(){
       <div class="pgrid">${others.filter(x => x.p || p).map(x => `<button type="button" data-pswap="${x.k}">${x.p ? `<span class="jersey">${x.p.num}</span>${esc(family(x.p.name))}` : '（空き）'}<span class="ptag" style="margin-left:auto">${x.lab}</span></button>`).join('')}</div>
       <div class="row">${back}<span style="flex:1"></span><button class="btn" data-close type="button">閉じる</button></div>`;
     if(f.mode === 'sub'){
-      const { ok:bench, blocked } = benchOf(m);
-      if(!subsLeft(m)) return `<h2>🔁 交代</h2><p>交代枠（${subRules(m).limit}人）を使い切りました。</p>${subRuleCtlHTML(m)}
+      const { ok:bench0, blocked } = benchOf(m), bench = byGroup(bench0, slotGroupOf(p.id));
+      if(!subsLeft(m)) return `<h2>🔁 交代</h2><p>交代の回数（${subRules(m).limit}回）を使い切りました。</p>${subRuleCtlHTML(m)}
         <div class="row">${back}<span style="flex:1"></span><button class="btn" data-close type="button">閉じる</button></div>`;
       return `<h2>🔁 交代：OUT #${p.num} ${esc(family(p.name))}（${sl.full}）</h2>
         <div class="q">入る選手（IN）　${subInfoHTML(m)}</div>
@@ -344,7 +363,7 @@ function pkView(m, ev){
     <div class="pknext">
       <div style="font-weight:900;font-size:17px">次のキッカー：<span class="chip ${s.next}" style="font-size:15px">${esc(teamName(m, s.next))}</span> ${s.nextNo}人目${s.nextNo > 5 ? '（サドンデス）' : ''}</div>
       ${s.next === 'us' ? `<div class="chips">${on.map(p => `<button type="button" data-pkkicker="${p.id}" aria-pressed="${state.ui.pkKicker===p.id}" ${kicked.has(p.id) && s.nextNo <= on.length ? 'style="opacity:.45"' : ''}>#${p.num} ${esc(family(p.name))}</button>`).join('')}</div>` : ''}
-      <div class="pkcourse"><span class="muted">コース（キッカーから見て・任意）</span>${pkGridHTML(state.ui.pkCourse, 'pkcs')}</div>
+      ${LV() === 'easy' ? '' : `<div class="pkcourse"><span class="muted">コース（キッカーから見て・任意）</span>${pkGridHTML(state.ui.pkCourse, 'pkcs')}</div>`}
       <div class="pkbtns"><button type="button" data-pk="goal">⚽ 成功</button><button type="button" data-pk="save">✋ 失敗（セーブ）</button><button type="button" data-pk="off">✕ 失敗（枠外）</button></div>
     </div>`}
   </section>`;
@@ -360,8 +379,9 @@ function evText(e, m){
     case 'mark': { const p = player(e.playerId);
       return `★ マーク${e.tag ? `：${lbl(MARK_TAGS, e.tag)}` : ''}${p ? `　#${p.num} ${family(p.name)}` : ''}${e.note ? `「${e.note}」` : ''}`; }
     case 'pkso': return `PK戦　${tn} ${e.no}人目 ${e.scored ? '○ 成功' : `× 失敗（${e.miss === 'save' ? 'セーブ' : '枠外'}）`}${e.num ? `　#${e.num} ${family(e.name)}` : ''}`;
-    case 'ck': return `${tn}　${e.ckType ? lbl(CK_TYPES, e.ckType) : 'CK'}`;
-    case 'fk': return `${tn}　${e.fkKind ? lbl(FK_KINDS, e.fkKind) : 'FK'}${e.fkPlay ? `→${lbl(FK_PLAYS, e.fkPlay)}` : ''}｜${e.zoneLabel}（ゴールまで${e.dist}m）`;
+    case 'ck': return `${tn}　${e.ckType ? lbl(CK_TYPES, e.ckType) : 'CK'}${hasDrawing(e.sketch) ? '　✏️' : ''}`;
+    case 'fk': return `${tn}　${e.fkKind ? lbl(FK_KINDS, e.fkKind) : 'FK'}${e.fkPlay ? `→${lbl(FK_PLAYS, e.fkPlay)}` : ''}｜${e.zoneLabel}（ゴールまで${e.dist}m）${hasDrawing(e.sketch) ? '　✏️' : ''}`;
+    case 'win': return `${tn}が奪った｜${thirdFor(e)}・${e.zoneLabel}`;
     case 'og': { const p = player(e.playerId);
       return `オウンゴール → ${teamName(m, e.team)}に1点${p ? `（#${p.num} ${family(p.name)}）` : e.oppNum ? `（相手#${e.oppNum}）` : ''}`; }
   }
@@ -371,12 +391,13 @@ function evText(e, m){
 function logItem(e, m){
   const chip = ['sub','break','kickoff'].includes(e.type) ? '' : e.type === 'formation' ? '<span class="chip fm">陣形</span>' : e.type === 'og' ? `<span class="chip ${e.team}">OG</span>`
     : e.type === 'mark' ? '<span class="chip warn">★</span>' : `<span class="chip ${e.team}">${e.team==='us'?'自':'相'}</span>`;
-  let btn = '';
+  let btn = '', chip2 = '';
   if(isPending(e)) btn = `<button class="btn small attn" data-goaledit="${e.id}" type="button">⚽ 状況を入力</button>`;
   else if(e.type==='shot' && e.result==='goal') btn = `<button class="btn small" data-goaledit="${e.id}" type="button">状況を見る</button>`;
   else if(e.type === 'mark') btn = `<button class="btn small ${e.tag ? '' : 'attn'}" data-markedit="${e.id}" type="button">✎ ${e.tag ? '編集' : 'タグ'}</button>`;
+  if(e.check) chip2 = '<span class="chip warn">？</span>';
   const ed = e.type === 'kickoff' ? '' : `<button class="x" data-edit="${e.id}" type="button" aria-label="この記録を直す・削除">✎</button>`;
-  return `<li class="${['sub','break','kickoff'].includes(e.type)?'sub':''}"><span class="t">${esc(pShort(m, e.period))} ${e.type === 'pkso' ? '' : e.clock}</span>${chip}<span class="tx" ${e.type === 'kickoff' ? '' : `data-edit="${e.id}"`}>${esc(evText(e, m))}</span>${btn}${ed}</li>`;
+  return `<li class="${['sub','break','kickoff'].includes(e.type)?'sub':''}"><span class="t">${esc(pShort(m, e.period))} ${e.type === 'pkso' ? '' : e.clock}</span>${chip}${chip2}<span class="tx" ${e.type === 'kickoff' ? '' : `data-edit="${e.id}"`}>${esc(evText(e, m))}</span>${btn}${ed}</li>`;
 }
 
 /* ---------- 記録処理 ---------- */
@@ -430,7 +451,7 @@ function timerAction(kind){
   const t = state.timer, per = curPer();
   if(kind === 'toggle'){
     if(t.startedAt){ foldTimer(); keepAwake(false); }
-    else if(!per.kickoff){ if(!cur().lineupSet || !state.lineup.length) starterSheet('ko'); else kickoffSheet(false); return; }
+    else if(!per.kickoff || !per.attack){ if(!cur().lineupSet || !state.lineup.length) starterSheet('ko'); else toast('上の 🪙 キックオフのチームと 🥅 攻める方向を選んでください'); return; }
     else if(!isStarted(cur(), t.p)){ kickOff(); return; }
     else { t.startedAt = Date.now(); keepAwake(true); }
     state.ui.resetArmed = false;
@@ -447,7 +468,7 @@ function setPeriod(i){
   if(t.brk) endBreak(true);
   foldTimer(); keepAwake(false);
   t.p = i; save.timer(); state.ui.pos = null; closeSheet(); render();
-  const per = curPer(); toast(`${per.label}に切り替えました${per.kind === 'pk' ? '' : per.kickoff ? `（${fmtClock(t.el[i] || 0)}から）` : '。🪙 COIN TOSSで陣地を決めます'}`);
+  const per = curPer(); toast(`${per.label}に切り替えました${per.kind === 'pk' ? '' : per.kickoff ? `（${fmtClock(t.el[i] || 0)}から）` : '。上の 🪙 と 🥅 でキックオフと陣地を選びます'}`);
 }
 function addPeriods(kind, min){
   const m = cur(); if(!m) return;
@@ -509,6 +530,7 @@ function formationEvent(){
   const fm = fmCur(), e = baseEvent('formation'); e.team = 'us';
   e.us = { shape:fm.us.shape, slots:slotsOf(fm.us.shape, 'us').map((sl, k) => { const p = player(fm.us.slots[k]); return { label:sl.label, playerId:p?.id ?? null, num:p?.num ?? null, name:p?.name ?? null }; }) };
   e.them = { shape:fm.them.shape || null, slots:(fm.them.slots || []).slice() };
+  if(hasMoved(fm.us)) e.us.pos = JSON.parse(JSON.stringify(fm.us.pos)); if(hasMoved(fm.them)) e.them.pos = JSON.parse(JSON.stringify(fm.them.pos));
   return e;
 }
 function recordFormationIfStarted(){ const m = cur(); if(m && fmCur().us.shape && isStarted(m, state.timer.p)) pushEvent(formationEvent()); }
@@ -519,11 +541,41 @@ function kickOff(){
   // スタメン設定の陣形を、キックオフの時刻で自動記録（前回の記録から変わっていれば）
   const fm = fmCur(), last = evOf(m.id).filter(x => x.type === 'formation').pop();
   const same = last && last.us.shape === fm.us.shape && (last.them.shape || null) === (fm.them.shape || null)
-    && last.us.slots.map(x => x.playerId).join() === fm.us.slots.join() && (last.them.slots || []).join() === (fm.them.slots || []).join();
+    && last.us.slots.map(x => x.playerId).join() === fm.us.slots.join() && (last.them.slots || []).join() === (fm.them.slots || []).join() && JSON.stringify(last.us.pos || null) === JSON.stringify(hasMoved(fm.us) ? fm.us.pos : null);
   if(fm.us.shape && !same){ const fe = formationEvent(); fe.clock = '00:00'; pushEvent(fe); }
   state.timer.startedAt = Date.now(); save.timer(); keepAwake(true);
   toast(`⚽ KICK OFF！ ${per.label}スタート`); render();
 }
+/* ---------- キックオフ前：上の段で「キックオフのチーム」「攻める方向」を選んで、そのまま KICK OFF ---------- */
+const COIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="url(#cg)" stroke="#9a430f" stroke-width="1.2"/><circle cx="12" cy="12" r="6.6" fill="none" stroke="#fff3" stroke-width="1.4"/><path d="M12 7.6l1.3 2.7 3 .4-2.2 2.1.5 3-2.6-1.4-2.6 1.4.5-3-2.2-2.1 3-.4z" fill="#fff8"/><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd1a6"/><stop offset=".45" stop-color="#ff9a4d"/><stop offset="1" stop-color="#b8541a"/></linearGradient></defs></svg>';
+const dirSVG = a => `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="${a === 'left' ? 1.5 : 18.5}" y="6" width="4" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/>
+  <path d="${a === 'left' ? 'M20 12H8m4-4-4 4 4 4' : a === 'right' ? 'M4 12h12m-4-4 4 4-4 4' : 'M5 12h10'}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function koInlineHTML(m, per){
+  const i = state.timer.p;
+  if(!per.kickoff && !per.attack && !per.koAuto){ const d = defaultKO(m, i); if(d.team || d.attack){ per.kickoff = d.team; per.attack = d.attack; per.koAuto = true; save.matches(); } }
+  const ready = per.kickoff && per.attack;
+  return `<div class="koinline">
+    <label class="kosel ${per.kickoff ? 'set' : ''}" title="キックオフするチーム"><span class="ic">${COIN_SVG}</span>
+      <select data-koteam aria-label="キックオフするチーム"><option value="" ${per.kickoff ? '' : 'selected'}>キックオフ</option>
+        <option value="us" ${per.kickoff === 'us' ? 'selected' : ''}>${esc(m.ourName)}</option><option value="them" ${per.kickoff === 'them' ? 'selected' : ''}>${esc(m.opponent)}</option></select></label>
+    <label class="kosel ${per.attack ? 'set' : ''}" title="${esc(m.ourName)}が攻める方向（iPadを持っている位置から見て）"><span class="ic dir">${dirSVG(per.attack)}</span>
+      <select data-koattack aria-label="${esc(m.ourName)}が攻める方向"><option value="" ${per.attack ? '' : 'selected'}>攻める方向</option>
+        <option value="right" ${per.attack === 'right' ? 'selected' : ''}>右へ攻める</option><option value="left" ${per.attack === 'left' ? 'selected' : ''}>左へ攻める</option></select></label>
+    <button class="tbtn ${ready ? 'kick' : 'kickoff-wait'}" data-kogoinline type="button" ${ready ? '' : 'disabled'}>⚽ KICK OFF</button>
+  </div>`;
+}
+document.addEventListener('change', e => {
+  const el = e.target; if(!('koteam' in el.dataset) && !('koattack' in el.dataset)) return;
+  const m = cur(), per = curPer(); if(!m || !per) return;
+  if('koteam' in el.dataset) per.kickoff = el.value || null; else per.attack = el.value || null;
+  per.koAuto = true; save.matches(); render();
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-kogoinline]'); if(!b || b.disabled) return;
+  const m = cur(), per = curPer(); if(!m || !per?.kickoff || !per.attack) return;
+  if(!m.lineupSet || !state.lineup.length){ starterSheet('ko'); return; }
+  markTapTime(); kickOff();
+});
 function periodSheet(){
   const m = cur(), ev = evOf(m.id), t = state.timer;
   const hasEt = m.periods.some(p => p.kind === 'et'), hasPk = m.periods.some(p => p.kind === 'pk');

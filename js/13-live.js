@@ -7,7 +7,7 @@
    ========================================================= */
 
 /* ---------- 時刻の確保：触れた瞬間の時計を覚えておく ---------- */
-function markTapTime(){ state.ui.tapAt = { ms:liveMs(), wall:Date.now(), p:state.timer.p }; }
+function markTapTime(){ state.ui.tapAt = { ms:liveMs(), wall:Date.now(), p:state.timer.p }; warnIfStopped(); }
 
 /* ---------- ピッチ：押した位置に印 → 指でドラッグして微調整 → 離すと結果ボタン ---------- */
 let drag = null;
@@ -78,8 +78,9 @@ function beep(kind = 'rec'){
 /* ---------- 記録（ポップアップから呼ばれる） ---------- */
 function afterRecord(e, msg){
   state.ui.tapAt = null;
+  const m = cur(); if(m && isStarted(m, state.timer.p) && !state.timer.startedAt && curPer()?.kind !== 'pk') msg = '⏸ 時計が止まっています（止まった時刻で記録）｜' + msg;
   beep(isGoalEv(e) ? 'goal' : 'rec');
-  toast(msg, e.id);
+  recFlash(e, msg);
 }
 function startPick(e, side, kind){
   state.ui.pick = { eventId:e.id, side, kind, until:Date.now() + 10000 };
@@ -93,17 +94,23 @@ function recordShot(team, result, opt = {}){
   e.result = result; e.pk = pk; e.foot = null; if(opt.fkShot) e.fkShot = true; if(pk && opt.course) e.pkCourse = opt.course;
   const sp = pk ? null : evOf(m.id).slice().reverse().find(v => (v.type === 'ck' || v.type === 'fk') && v.team === team && v.period === e.period && e.sec - v.sec >= 0 && e.sec - v.sec <= 15);
   e.fromSetPiece = sp ? sp.type : null;
+  const wn = pk ? null : evOf(m.id).slice().reverse().find(v => v.type === 'win' && v.team === team && v.period === e.period && e.sec - v.sec >= 0 && e.sec - v.sec <= 10);
+  e.fromWin = wn ? wn.id : null;
   e.goal = result === 'goal' && pk ? { phase:'setpiece', detail:'pk', lastPass:'direct', lane:3, foot:null, touch:null, originZone:null, assistId:null, oppNum:null } : null;
   pushEvent(e);
   state.ui.pos = null; state.ui.pop = null;
   if(result === 'goal' && team === 'us') celebrate(m.ourName);
-  startPick(e, team, 'shooter');
-  afterRecord(e, `${teamName(m, team)} ${pk ? 'PK' : 'シュート'} → ${RES[result].label}。打った選手を下の盤でタップ（任意）`);
+  if(result === 'goal' && team === 'them') askCause(e);
+  // 相手の背番号が1つも入っていないときは、選手を選ぶ案内を出さない
+  // 「かんたん」では自チームのゴールのときだけ選手を選ぶ
+  const canPick = (LV() !== 'easy' || (team === 'us' && result === 'goal')) && (team === 'us' || fmCur().them.slots.some(n => n != null));
+  if(canPick) startPick(e, team, 'shooter');
+  afterRecord(e, `${teamName(m, team)} ${pk ? 'PK' : 'シュート'} → ${RES[result].label}${wn ? '（奪って10秒以内）' : ''}${canPick ? '。打った選手を下の盤でタップ（任意）' : ''}`);
   render();
 }
 function recordCK(team, side, style){
-  const m = cur(), t = CK_TYPES.find(x => x.side === side && x.style === style);
-  const e = baseEvent('ck'); e.team = team; e.ckType = t.id; e.side = side; e.style = style;
+  const m = cur(), t = CK_TYPES.find(x => x.side === side && x.style === (style || null)) || CK_TYPES.find(x => x.id === side);
+  const e = baseEvent('ck'); e.team = team; e.ckType = t.id; e.side = side; e.style = style || null;
   if(state.ui.pos) withPos(e, state.ui.pos.x, state.ui.pos.y);
   pushEvent(e); state.ui.pos = null; state.ui.pop = null;
   afterRecord(e, `${teamName(m, team)} ${t.label}`); render();
@@ -112,17 +119,17 @@ function recordCK(team, side, style){
 function recordFK(team, kind, play){
   const m = cur(), pos = state.ui.pos;
   const e = baseEvent('fk'); e.team = team; withPos(e, pos.x, pos.y); e.area = areaOf(pos.x, pos.y, team); e.dist = distOf(pos.x, pos.y, team);
-  e.fkKind = kind; e.fkPlay = play;
+  e.fkKind = kind || null; e.fkPlay = play;
   pushEvent(e);
   if(play === 'shot'){ state.ui.pop = { kind:'pitch', mode:'fkshot', team }; beep('rec'); render(); return; }
   state.ui.pos = null; state.ui.pop = null;
-  afterRecord(e, `${teamName(m, team)} ${lbl(FK_KINDS, kind)}→${lbl(FK_PLAYS, play)}`); render();
+  afterRecord(e, `${teamName(m, team)} FK${kind ? `（${lbl(FK_KINDS, kind)}）` : ''}→${lbl(FK_PLAYS, play)}`); render();
   maybeSetPieceSketch(e);
 }
 function recordOG(team){
   const m = cur(), e = baseEvent('og'); e.team = team; e.playerId = null; e.oppNum = null;
   pushEvent(e); state.ui.pop = null;
-  if(team === 'us') celebrate('OWN GOAL');
+  if(team === 'us') celebrate('OWN GOAL'); else askCause(e);
   startPick(e, team === 'us' ? 'them' : 'us', 'og');
   afterRecord(e, `オウンゴール：${teamName(m, team)}に1点。入れてしまった選手を盤でタップ（任意）`); render();
 }
@@ -133,8 +140,10 @@ function applyPick(side, idx){
   if(side === 'us'){ const p = player(fm.us.slots[idx]); if(p) Object.assign(e, { playerId:p.id, num:p.num, name:p.name, grade:p.grade }); }
   else e.oppNum = fm.them.slots[idx] ?? null;
   e.synced = false; save.events();
-  if(e.type === 'shot'){ if(e.result === 'goal' && side === 'us') celebrate(e.num ? `#${e.num} ${e.name}` : ''); showPop({ kind:'foot', side, idx, eventId:e.id }); }
-  else { toast('選手を記録しました'); render(); }
+  if(e.type === 'shot' && e.result === 'goal'){   // 足はゴールのときだけ聞く
+    if(side === 'us' && e.playerId){ showGoalTag(e); $('#toast').hidden = true; }
+    render(); }   // 足は聞かない（必要ならゴールの状況の入力で）
+  else { render(); pickFlash(e); }
 }
 function addMark(){
   const e = baseEvent('mark'); e.team = 'us'; e.tag = null; e.note = ''; e.playerId = null;
@@ -154,18 +163,18 @@ function endPeriod(){
     setPeriod(i + 1);
     const ko = defaultKO(m, i + 1);
     if(ko.team && ko.attack){ next.kickoff = ko.team; next.attack = ko.attack; save.matches(); }
-    toast(`${per.label}終了。${next.label}は${next.kickoff ? 'キックオフと陣地を自動で入れ替えました。⚽ KICK OFFで開始' : '🪙 COIN TOSSでトスの結果を選んでから'}`);
+    toast(`${per.label}終了。${next.label}は${next.kickoff ? 'キックオフと陣地を自動で入れ替えました。⚽ KICK OFFで開始' : '上の 🪙 と 🥅 を選んでから ⚽ KICK OFF'}`);
     render();
   } else { toast(`${per.label}終了`); render(); periodSheet(); }
 }
 
 /* ---------- まとめて交代（OUT→IN の組を作ってから一度に確定） ---------- */
-function subPair(outId, inId){
+function subPair(outId, inId, win){
   const outP = player(outId), inP = player(inId); if(!outP || !inP) return;
   state.lineup = state.lineup.map(id => id === outP.id ? inP.id : id); save.lineup();
   const f = fmCur(); f.us.slots = f.us.slots.map(id => id === outP.id ? inP.id : id); save.fm();
   const m = cur(); if(m.gk === outP.id){ m.gk = inP.id; save.matches(); }
-  const e = baseEvent('sub'); e.team = 'us';
+  const e = baseEvent('sub'); e.team = 'us'; e.win = win || e.id; e.ht = !isStarted(m, state.timer.p);
   Object.assign(e, { outId:outP.id, outNum:outP.num, outName:outP.name, inId:inP.id, inNum:inP.num, inName:inP.name });
   pushEvent(e); return e;
 }
@@ -178,12 +187,12 @@ function batchSubSheet(){
   if(!state.ui.flow || state.ui.flow.kind !== 'bsub') state.ui.flow = { kind:'bsub', pairs:[], selOut:null, selIn:null };
   const f = state.ui.flow, fm = fmCur(), sl = fm.us.shape ? slotsOf(fm.us.shape, 'us') : [];
   const usedOut = new Set(f.pairs.map(p => p[0])), usedIn = new Set(f.pairs.map(p => p[1]));
-  const on = state.lineup.map(player).filter(Boolean), { ok:bench, blocked } = benchOf(m);
-  const left = subsLeft(m) - f.pairs.length, full = left <= 0;
+  const on = state.lineup.map(player).filter(Boolean), { ok:bench0, blocked } = benchOf(m), bench = byGroup(bench0, f.selOut ? slotGroupOf(f.selOut) : null);
+  const full = subsLeft(m) <= 0;   // 1回の交代で何人代えてもよい
   const lab = id => { const k = fm.us.slots.indexOf(id); return k >= 0 && sl[k] ? sl[k].full : posOf(player(id)); };
   openSheet(`<h2>👥 交代 <span class="muted" style="font-size:13px;font-weight:700">OUT → IN の順にタップして組を作り、最後にまとめて確定</span></h2>
     ${subRuleCtlHTML(m).replace(subInfoHTML(m), subInfoHTML(m, f.pairs.length))}
-    ${full ? `<div class="note-banner" style="margin-bottom:8px">交代枠（${subRules(m).limit}人）に達しました。これ以上は選べません</div>` : ''}
+    ${full ? `<div class="note-banner" style="margin-bottom:8px">交代の回数（${subRules(m).limit}回）を使い切りました</div>` : ''}
     <div class="bsub">
       <div><div class="q">OUT（出場中）</div><div class="stlist">${on.map(p => `<button type="button" data-bout="${p.id}" aria-pressed="${f.selOut===p.id}" ${usedOut.has(p.id) ? 'disabled' : ''}><span class="jersey">${p.num}</span><span class="nm">${esc(family(p.name))}</span><em>${lab(p.id) || ''}</em></button>`).join('')}</div></div>
       <div><div class="q">IN（ベンチ）</div><div class="stlist">${bench.map(p => `<button type="button" data-bin="${p.id}" aria-pressed="${f.selIn===p.id}" ${usedIn.has(p.id) || full ? 'disabled' : ''}><span class="jersey">${p.num}</span><span class="nm">${esc(family(p.name))}</span><em>${posOf(p) || ''}</em></button>`).join('') || '<span class="muted">ベンチに選手がいません</span>'}
@@ -197,10 +206,10 @@ function batchSubClick(d){
   const f = state.ui.flow;
   if(d.bout){ f.selOut = f.selOut === d.bout ? null : d.bout; }
   if(d.bin){ f.selIn = f.selIn === d.bin ? null : d.bin; }
-  if(f.selOut && f.selIn && subsLeft(cur()) - f.pairs.length <= 0){ f.selIn = null; toast('交代枠に達しています'); }
+  if(f.selOut && f.selIn && subsLeft(cur()) <= 0){ f.selIn = null; toast('交代の回数を使い切っています'); }
   if(f.selOut && f.selIn){ f.pairs.push([f.selOut, f.selIn]); f.selOut = f.selIn = null; }
   if(d.bdel !== undefined) f.pairs.splice(+d.bdel, 1);
-  if('bgo' in d){ const n = f.pairs.length; f.pairs.forEach(([o, i]) => subPair(o, i)); closeSheet(); beep('ok'); toast(`${n}組の交代を記録しました`); render(); return; }
+  if('bgo' in d){ const n = f.pairs.length, w = 'w' + uid(); f.pairs.forEach(([o, i]) => subPair(o, i, w)); closeSheet(); beep('ok'); toast(`${n}組の交代を記録しました`); render(); return; }
   batchSubSheet();
 }
 
@@ -240,9 +249,12 @@ function settingsSheet(){
   const st = state.meta.settings;
   openSheet(`<h2>⚙ 設定</h2>
     <div class="setlist">
+      <div class="setrow lvrow"><span><b>記録の量</b><small>記録係の慣れに合わせて選びます。試合中でも変えられます</small></span>
+        <div class="lvseg" role="group" aria-label="記録の量">${LEVELS.map(l => `<button type="button" data-setlevel="${l.id}" aria-pressed="${LV() === l.id}"><b>${l.label}</b><small>${l.sub}</small></button>`).join('')}</div></div>
+      ${roleSegHTML()}
       <label class="setrow"><span><b>記録したときの効果音</b><small>画面を見なくても記録できたと分かります</small></span><input type="checkbox" id="setSound" ${st.sound ? 'checked' : ''}></label>
       <label class="setrow"><span><b>左手で操作する</b><small>記録ボタンの列を左側に置きます</small></span><input type="checkbox" id="setLefty" ${st.lefty ? 'checked' : ''}></label>
-      <label class="setrow"><span><b>CK・FKのあとに作図を開く</b><small>ハーフコートの図が出て、ボールの軌道や選手の位置をApple Pencilで描けます（「あとで」で閉じられます）</small></span><input type="checkbox" id="setDrawSP" ${st.drawSP ? 'checked' : ''}></label>
+      <label class="setrow"><span><b>CK・FKのあとに作図を開く（「くわしい」のとき）</b><small>ハーフコートの図が出て、ボールの軌道や選手の位置をApple Pencilで描けます（「あとで」で閉じられます）</small></span><input type="checkbox" id="setDrawSP" ${st.drawSP ? 'checked' : ''}></label>
       <label class="setrow"><span><b>屋外モード（明るい配色）</b><small>直射日光の下で見やすくします</small></span><input type="checkbox" id="setBright" ${state.meta.bright ? 'checked' : ''}></label>
     </div>
     ${gasSettingsHTML()}
@@ -256,7 +268,7 @@ function settingsSheet(){
 function exportBackup(){
   Store.flush();
   const data = { app:'pitch-note', kind:'backup', version:1, exportedAt:new Date().toISOString(), store:Store.dump() };
-  const text = JSON.stringify(data), name = `pitch-note-backup-${today()}.json`;
+  const text = JSON.stringify(data), name = `match-log-backup-${today()}.json`;
   try{
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type:'application/json' })); a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
@@ -275,7 +287,7 @@ function importBackup(file){
           [...Store.cache.keys()].forEach(k => Store.remove(k));
           Object.entries(data.store).forEach(([k, v]) => Store.write(k, v));
           Store.flush(); initState(); loadTeam(state.teams[0].id); state.ui.screen = 'teams'; render(); toast('バックアップから戻しました'); } }] });
-    }catch(e){ toast('このファイルはピッチノートのバックアップではありません'); }
+    }catch(e){ toast('このファイルはMATCH LOGのバックアップではありません'); }
   };
   rd.readAsText(file);
 }

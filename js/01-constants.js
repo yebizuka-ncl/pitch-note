@@ -49,9 +49,13 @@ const LASTPASS = [
 ];
 const FEET = [ { id:'right', label:'右足' }, { id:'left', label:'左足' }, { id:'head', label:'ヘディング' }, { id:'other', label:'その他' } ];
 const CK_TYPES = [ { id:'L-cross', side:'L', style:'cross', label:'左CK・クロス' }, { id:'L-short', side:'L', style:'short', label:'左CK・ショート' },
-                   { id:'R-cross', side:'R', style:'cross', label:'右CK・クロス' }, { id:'R-short', side:'R', style:'short', label:'右CK・ショート' } ];
+                   { id:'R-cross', side:'R', style:'cross', label:'右CK・クロス' }, { id:'R-short', side:'R', style:'short', label:'右CK・ショート' },
+                   { id:'L', side:'L', style:null, label:'左CK' }, { id:'R', side:'R', style:null, label:'右CK' } ];
+const CK_SIDES = [ { id:'L', label:'左CK' }, { id:'R', label:'右CK' } ];   // 今の記録は左右だけ（蹴り方は作図に残す）
 const FK_KINDS = [ { id:'direct', label:'直接FK' }, { id:'indirect', label:'間接FK' } ];
-const FK_PLAYS = [ { id:'shot', label:'直接シュート' }, { id:'cross', label:'クロス・放り込み' }, { id:'short', label:'つないだ' } ];
+const FK_PLAYS = [ { id:'shot', label:'直接シュート' }, { id:'cross', label:'クロス・放り込み' }, { id:'short', label:'つないだ' }, { id:'kick', label:'シュート以外' } ];
+const FK_PLAYS2 = [ { id:'shot', label:'直接シュート' }, { id:'kick', label:'シュート以外' } ];   // 今の記録は2択（中身は作図に残す）
+const fkPlay2 = e => e.fkPlay === 'shot' ? 'shot' : 'kick';
 const POSITIONS = ['GK','DF','MF','FW'];
 const TOUCH = [ { id:'first', label:'ダイレクト' }, { id:'control', label:'トラップして' } ];
 const ALL_DETAILS = [...SP_DETAILS, ...WIN_DETAILS];

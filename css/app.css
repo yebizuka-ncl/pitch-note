@@ -465,7 +465,7 @@ td .num{font-size:17px;font-weight:800}
 .dayhead small{font-family:var(--sans);font-size:12px;color:var(--ink-3);font-weight:800}
 .hist-item .sc small{font-size:13px;font-style:normal;color:var(--ink-3);margin-left:4px}
 .marks{display:flex;flex-direction:column;gap:6px;max-height:380px;overflow:auto}
-.mk{display:grid;grid-template-columns:auto auto 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:7px 10px}
+.mk{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:10px;align-items:center;border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:7px 10px}
 .mk .t{font-family:var(--display);font-weight:800;font-size:19px}
 .mk .v{font-size:12px;color:var(--ink-3);font-weight:800;line-height:1.2}
 .mk .v b{font-family:var(--display);font-size:16px;color:var(--gold)}
@@ -843,3 +843,252 @@ textarea.scrib{padding:10px 12px;border-radius:10px;border:1px solid var(--line)
 .skfm select{font:inherit;padding:5px 8px;border-radius:8px;background:var(--surface-2);color:var(--ink);border:1px solid var(--line);max-width:120px}
 [data-sktrail][aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
 #skSvg [data-pl],#skSvg [data-it]{cursor:grab}
+
+/* ---------- v15 奪取・FK 2択・分析パネル・入力漏れ ---------- */
+.fkrow .fkt{font-size:12.5px;font-weight:900;min-width:4.5em}.fkrow .fkt.us{color:var(--kit-hi)}.fkrow .fkt.them{color:var(--opp)}
+.fkrow button{font-size:13px}
+.wingrid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;align-items:start}
+.wingrid .sksvg{width:100%;height:auto;border-radius:10px;display:block}
+.arows{display:flex;flex-direction:column;gap:6px}.arows .q{margin-top:4px}
+.arow{display:grid;grid-template-columns:6.5em 1fr;align-items:center;gap:8px;font-size:13px;font-weight:800}
+.arow b.num{font-size:20px}.arow span.us{color:var(--kit-hi)}.arow span.them{color:var(--opp)}
+.arow:has(b.num){grid-template-columns:6.5em auto 1fr}
+.abar{display:flex;height:22px;border-radius:6px;overflow:hidden;gap:2px}
+.abar span{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;min-width:28px}
+.abar .a0,.alegend .a0{background:#5b6472}.abar .a1,.alegend .a1{background:#8a7a3a}.abar .a2,.alegend .a2{background:#2f9a5e}
+.alegend{font-size:11.5px;font-weight:700;color:var(--ink-3);display:flex;gap:6px;align-items:center}
+.alegend i{display:inline-block;width:12px;height:12px;border-radius:3px}
+@media (max-width:900px){.wingrid{grid-template-columns:1fr}}
+.gapbar{position:relative;height:30px;border-radius:8px;background:var(--surface-2);overflow:hidden;display:flex;align-items:center;gap:10px;padding:0 12px}
+.gapbar span{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--on),#7bd8a3);opacity:.35}
+.gapbar b,.gapbar small{position:relative;font-weight:900}.gapbar small{color:var(--ink-3)}
+.gaplist{display:flex;flex-wrap:wrap;gap:6px}
+.gapi{border:1px solid var(--gold);background:rgba(255,200,61,.1);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:800}
+.gapi.soft{border-color:var(--line);background:var(--surface-2);color:var(--ink-2)}.gapi small{margin-left:4px;color:var(--ink-3)}
+.htvis{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+@media (max-width:900px){.htvis{grid-template-columns:1fr}}
+.lvrow{flex-direction:column;align-items:stretch!important;gap:8px}
+.lvseg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.lvseg button{display:flex;flex-direction:column;gap:3px;align-items:flex-start;text-align:left;border:1.5px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:12px;padding:10px}
+.lvseg button b{font-size:15px}.lvseg button small{font-size:11px;color:var(--ink-3);font-weight:700;line-height:1.4}
+.lvseg button[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.lvchip.lv-easy{border-color:var(--on);color:var(--on)}.lvchip.lv-full{border-color:var(--accent);color:var(--accent)}
+@media (max-width:900px){.lvseg{grid-template-columns:1fr}}
+/* v17 右の記録ボタンは同じ大きさの2×2に。★のタグ選択と「取り消す」が重ならないように */
+.panel-ev{justify-content:center}
+.evgrid2{flex:0 0 auto;grid-template-rows:repeat(2,minmax(96px,150px))}
+.ev2.ck,.ev2.mark{grid-column:auto}
+body[data-screen="record"] .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+.stkitrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.stkitrow .kitpick{flex:1;min-width:320px}
+/* v18 得点の表示・相手選手のメモ */
+.fp .gb{position:absolute;left:-10px;top:-8px;font-style:normal;font-size:10px;font-weight:900;background:#fff;color:#111;border-radius:999px;padding:0 4px;line-height:15px;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.fp .gtag{position:absolute;left:50%;bottom:calc(100% + 4px);transform:translateX(-50%);white-space:nowrap;background:var(--gold);color:#2a1d00;font-size:11.5px;font-weight:900;padding:2px 8px;border-radius:999px;box-shadow:0 3px 10px rgba(0,0,0,.45);z-index:4;animation:gtagIn .35s ease}
+@keyframes gtagIn{from{opacity:0;transform:translate(-50%,6px)}to{opacity:1;transform:translate(-50%,0)}}
+.fp.them.key .c{box-shadow:0 0 0 3px var(--gold),0 0 10px rgba(255,200,61,.6)}
+.fp .kb{position:absolute;right:-9px;top:-9px;font-style:normal;font-size:12px;color:var(--gold);text-shadow:0 1px 2px #000}
+.fp .ot{position:absolute;left:50%;top:calc(100% - 2px);transform:translateX(-50%);white-space:nowrap;font-style:normal;font-size:9.5px;font-weight:900;color:#fff;background:rgba(0,0,0,.55);padding:0 5px;border-radius:4px}
+.fp.sm .ot{top:calc(100% + 1px)}
+.pop-tags{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pop-tags span{font-size:11.5px;font-weight:800;color:var(--ink-3)}
+.pop-tags button{flex:1;min-height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-weight:900;font-size:12.5px}
+.pop-tags button[aria-pressed="true"]{background:var(--gold);color:#2a1d00;border-color:var(--gold)}
+.fp .gtag.lft{left:auto;bottom:auto;right:calc(100% + 8px);top:50%;transform:translateY(-50%);animation:gtagL .35s ease}
+@keyframes gtagL{from{opacity:0;transform:translate(-6px,-50%)}to{opacity:1;transform:translate(0,-50%)}}
+/* v19 得点の札（盤の中央下）・勝敗ラベル */
+.gtagc{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:5;white-space:nowrap;background:var(--gold);color:#2a1d00;font-size:14px;font-weight:900;padding:4px 14px;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.5);pointer-events:none;animation:gtagIn .35s ease}
+.wld{flex:none;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:52px;padding:3px 8px;border-radius:8px;font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:.06em;line-height:1}
+.wld small{font-family:var(--sans);font-size:9.5px;letter-spacing:0;font-weight:800;margin-top:2px}
+.wld.w{background:linear-gradient(180deg,#ffe08a,#e0a90f);color:#2a1d00}
+.wld.l{background:linear-gradient(180deg,#3d3f8f,#23245c);color:#ffffff;box-shadow:inset 0 0 0 1px rgba(160,165,255,.35)}
+.wld.d{background:linear-gradient(180deg,#c9d1dc,#8e98a6);color:#141820}
+.nav button[data-nav="teams"]{font-size:10.5px;line-height:1.15;text-align:center}
+
+/* =========================================================
+   v4：デザインB（アルマイトのエンジ×カッパー）
+   画面の地・ボタン・飾り＝チームの色（1stユニの色）でいつも同じ
+   「自チーム」を表す部分（スコアボード・選手の丸・シュートの点・CK）だけ今日のユニの色
+   ========================================================= */
+:root{ --brand:#8c1d2f; --brand-deep:#4e0f1a; --brand-hi:#cf4a63; --copper:#ff9a4d; --kit-acc:#ff7a1a;
+  --metal:linear-gradient(160deg,var(--brand-hi) 0%,var(--brand) 52%,var(--brand-deep) 100%);
+  --copper-metal:linear-gradient(180deg,#ffd1a6 0%,var(--copper) 35%,#d9621c 62%,#9a430f 100%);
+  --sf-top:#34141d; --sf-bot:#1b080d; --sf2-top:#3a1822; --sf2-bot:#220c12; }
+:root:not(.bright) body{background:radial-gradient(ellipse at 30% -10%,var(--sf2-top) 0%,var(--bg) 60%) fixed,var(--bg)}
+:root:not(.bright) .card{background:linear-gradient(180deg,var(--sf-top) 0%,var(--sf-bot) 100%);box-shadow:inset 0 1px 0 rgba(255,210,180,.12),var(--shadow)}
+:root:not(.bright) .sheet{background:linear-gradient(180deg,var(--sf-top) 0%,var(--sf-bot) 100%);box-shadow:inset 0 1px 0 rgba(255,210,180,.14),0 24px 60px rgba(0,0,0,.55)}
+:root:not(.bright) .btn:not(.primary):not(.danger),:root:not(.bright) .chips button:not([aria-pressed="true"]),:root:not(.bright) .iconbtn{background:linear-gradient(180deg,var(--sf2-top),var(--sf2-bot));box-shadow:inset 0 1px 0 rgba(255,220,195,.1)}
+:root:not(.bright) .topbar{background:linear-gradient(180deg,var(--sf2-top),var(--bg-2))}
+.nav{background:var(--metal)}
+.nav::after{background:linear-gradient(115deg,transparent 0 58%,rgba(255,154,77,.55) 58% 64%,transparent 64% 68%,rgba(255,209,166,.35) 68% 70%,transparent 70%),repeating-linear-gradient(-55deg,rgba(255,255,255,.04) 0 10px,transparent 10px 26px)}
+.nav button[aria-current="page"]{box-shadow:inset 0 -3px 0 var(--copper)}
+.nav button[aria-current="page"] svg,.nav .logo span i{color:var(--copper)}
+.hero,:root:not(.bright) .hero{background:var(--metal)}
+.hero::after{right:-20px;top:-40px;width:170px;background:linear-gradient(90deg,var(--copper) 0 62%,transparent 62% 76%,#ffd1a6 76%);opacity:.9}
+.hero-start{background:var(--copper-metal);color:#2a0f00;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 10px 26px rgba(0,0,0,.35)}
+.sync-btn,.btn.primary{background:var(--metal);border-color:var(--brand);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 -3px 0 var(--copper)}
+.eng{color:var(--copper)}
+/* 自チームの部分は今日のユニの色 */
+.sb .tm.us{background:linear-gradient(180deg,color-mix(in srgb,var(--kit) 80%,#fff) 0%,var(--kit) 50%,var(--kit-deep) 100%);box-shadow:inset -4px 0 0 var(--kit-acc)}
+.fp.us .c{background:linear-gradient(180deg,color-mix(in srgb,var(--kit) 78%,#fff),var(--kit) 55%,var(--kit-deep));border-color:var(--kit-acc)}
+.ev2.ck{background:linear-gradient(160deg,color-mix(in srgb,var(--kit) 80%,#fff) 0%,var(--kit) 52%,var(--kit-deep) 100%);box-shadow:inset 0 -4px 0 var(--kit-acc)}
+.chips button[aria-pressed="true"]{background:var(--metal);border-color:var(--copper);box-shadow:inset 0 -2px 0 var(--copper)}
+/* 画面の上端：今日のユニの色の細い帯 */
+.topbar{border-top:4px solid var(--kit);border-image:linear-gradient(90deg,var(--kit) 0 72%,var(--kit-acc) 72%) 1}
+.kitshirt{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 12px 3px 6px;font-family:var(--display);font-weight:800;font-size:17px;border:2px solid var(--kit-acc);background:linear-gradient(180deg,color-mix(in srgb,var(--kit) 80%,#fff),var(--kit) 55%,var(--kit-deep));color:#fff}
+.kitshirt svg{width:24px;height:22px}
+:root.bright .card{box-shadow:var(--shadow)}
+
+/* ---------- ① 記録の確認表示（大きめ） ---------- */
+.toast.big{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 10px;font-size:13px;max-width:min(760px,calc(100% - 24px));background:#0b0508;color:#fff;border:1px solid rgba(255,170,120,.35)}
+:root.bright .toast.big{background:#1b0c10}
+.toast.big .rf-team{padding:6px 10px;border-radius:8px;font-weight:900;font-size:13px;white-space:nowrap}
+.toast.big .rf-team.us{background:var(--kit);box-shadow:inset -3px 0 0 var(--kit-acc)}
+.toast.big .rf-team.them{background:var(--opp);color:var(--opp-ink)}
+.toast.big .rf-big{font-size:24px;font-weight:900;white-space:nowrap}
+.toast.big .rf-who{font-family:var(--display);font-size:28px;font-weight:800;color:var(--gold);white-space:nowrap}
+.toast.big .rf-who.xl{font-size:34px}
+.toast.big .rf-sub{flex:1;min-width:0;opacity:.75;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tundo.big{min-height:48px;padding:0 16px;border-radius:12px;border:0;background:var(--copper-metal);color:#2a0f00;font-weight:900;font-size:15px;white-space:nowrap}
+/* ？（あとで確認） */
+.qbtn{font-weight:900}
+.qbtn.on{background:rgba(255,200,61,.2)!important;color:var(--gold);border-color:var(--gold)}
+/* 担当：シュート係は交代・HTなどを隠す */
+.role-shot [data-members],.role-shot [data-halftime],.role-shot .brkbtn,.role-shot [data-hold="reset"]{display:none!important}
+.role-bench .ev2 .en{font-size:30px}
+/* 失点の原因（試合中の下の行） */
+.ticker .chips.causes{flex-wrap:nowrap;overflow-x:auto}
+.ticker .chips.causes button{white-space:nowrap;min-height:38px;padding:5px 11px;font-size:13px}
+
+/* ---------- ② 失点の原因・ふり返り・推移 ---------- */
+.hbars{display:flex;flex-direction:column;gap:6px}
+.hb{display:grid;grid-template-columns:11em 1fr 2.4em;align-items:center;gap:8px;font-size:13px;font-weight:800}
+.hb i{height:14px;border-radius:0 4px 4px 0;background:var(--opp);min-width:4px}
+.hb b{font-size:18px;text-align:right}
+.hints{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:rgba(255,154,77,.1);border:1px solid rgba(255,154,77,.3);font-size:13px}
+.hints b{color:var(--copper);font-size:12.5px}
+.rv3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.rvbox{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:900;color:var(--ink-2)}
+.rvbox textarea{width:100%;border-radius:12px;padding:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-size:15px;font-family:inherit;resize:vertical}
+.rv-good span::before{content:"◎ ";color:var(--on)}.rv-issue span::before{content:"△ ";color:var(--gold)}.rv-next span::before{content:"▶ ";color:var(--copper)}
+.nextprac{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.np-next b{font-size:12px;color:var(--copper)}
+.np-next p{margin:2px 0 0;font-weight:800;font-size:15px;white-space:pre-wrap}
+.np-best{font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nextprac .btn{align-self:flex-start}
+.trend2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.lc{margin:0}
+.lc figcaption{font-size:12.5px;font-weight:900;color:var(--ink-2);margin-bottom:2px}
+.lc svg{width:100%;height:auto;display:block}
+.lc .grid{stroke:var(--line);stroke-width:1}
+.lc .ax{font-size:11px;fill:var(--ink-3)}
+.lc .dl{font-size:11.5px;font-weight:800;fill:var(--ink)}
+.lc .ln{fill:none;stroke-width:2;stroke-linejoin:round}
+.lc .ln.us{stroke:var(--kit-hi)}.lc .ln.them{stroke:var(--opp)}
+.lc .pt{stroke:var(--surface);stroke-width:2}.lc .pt.us{fill:var(--kit-hi)}.lc .pt.them{fill:var(--opp)}
+.tblegend i.us{background:var(--kit-hi)}.tblegend i.them{background:var(--opp)}
+
+/* ---------- ③ 選手カード・動画・ベストプレー ---------- */
+.playbtn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:#e62117;color:#fff;font-weight:900;font-size:12px;text-decoration:none;white-space:nowrap}
+.plink{border:0;background:none;padding:0;text-align:left;color:inherit;font:inherit;cursor:pointer}
+.mk .playbtn{align-self:center}
+.vidrow{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.vidper{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.bestlist{display:flex;flex-wrap:wrap;gap:6px}
+.bestlist button{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px 12px;font-weight:800;font-size:13px;text-align:left;color:var(--ink)}
+.bestlist button.on{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold);background:rgba(255,200,61,.15)}
+.bestsel{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px;border-radius:14px;background:linear-gradient(135deg,rgba(255,200,61,.22),rgba(255,154,77,.08));border:1px solid rgba(255,200,61,.5)}
+.bestsel > b{font-size:16px}
+.bestsel > b::before{content:"🏆 "}
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.pcbtn{border:0;padding:0;background:none;text-align:left;cursor:pointer}
+.pcbtn:active{transform:scale(.98)}
+.pcard{position:relative;overflow:hidden;border-radius:16px;color:#fff;display:flex;flex-direction:column;gap:8px;padding:0 0 10px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--pa) 30%,#1a0a0e) 0%,#140709 100%);
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pb) 60%,transparent),0 8px 20px rgba(0,0,0,.35)}
+.pcard > *{position:relative}
+.pc-head{display:flex;align-items:center;gap:10px;padding:10px 12px 12px;background:linear-gradient(160deg,color-mix(in srgb,var(--pa) 75%,#fff) 0%,var(--pa) 50%,color-mix(in srgb,var(--pa) 60%,#000) 100%);box-shadow:inset 0 -4px 0 var(--pb)}
+.pc-num{font-size:46px;font-weight:800;font-style:italic;line-height:.9;min-width:1.2em;text-align:center;text-shadow:0 2px 0 rgba(0,0,0,.3)}
+.pc-id{min-width:0}
+.pc-name{font-weight:900;font-size:18px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-meta{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;opacity:.9;margin-top:2px}
+.pc-pos{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:.08em;padding:0 7px;border-radius:5px;background:rgba(0,0,0,.3)}
+.pc-role{margin:0 12px;font-size:12.5px;font-weight:900;padding:4px 9px;border-radius:8px;align-self:flex-start;background:rgba(255,255,255,.1);color:#f3d9cc}
+.pc-role.sub{background:rgba(38,198,218,.18);color:#8ee6f0}
+.pc-role.sub::before{content:"🔁 "}.pc-role.start::before{content:"▶ "}
+.pc-badges{display:flex;gap:4px;flex-wrap:wrap;margin:0 12px}
+.pc-badges span{font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:.06em;padding:1px 8px;border-radius:999px;background:linear-gradient(180deg,#ffe08a,#e0a90f);color:#3a2600}
+.pc-big{display:grid;grid-template-columns:repeat(3,1fr);margin:0 12px;border-radius:12px;background:rgba(255,255,255,.07);padding:8px 4px}
+.pc-big div{display:flex;flex-direction:column;align-items:center;gap:2px}
+.pc-big b{font-size:30px;line-height:1}
+.pc-big div:first-child b{color:var(--gold)}
+.pc-big small{font-size:11.5px;font-weight:800;color:#e6cfc5}
+.pc-rows{display:flex;flex-direction:column;gap:4px;margin:0 12px}
+.pc-r{display:flex;align-items:baseline;gap:8px;font-size:13px;font-weight:800;color:#e6cfc5;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:3px}
+.pc-r span{flex:1}.pc-r b{font-size:20px;color:#fff}.pc-r small{font-size:11.5px;color:#d6b3a6;min-width:4.5em;text-align:right}
+.pc-foot{margin:0 12px;font-size:11px;font-weight:800;color:#b08a7e}
+.pcwrap{display:grid;grid-template-columns:250px 1fr;gap:14px;align-items:start}
+
+.pcscenes{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow:auto}
+.scn{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);font-size:13px;font-weight:800}
+@media (max-width:820px){ .rv3,.trend2{grid-template-columns:1fr} .pcwrap{grid-template-columns:1fr} }
+.toast.big.side{flex-wrap:wrap;gap:6px 8px;max-width:none;padding:10px;align-content:flex-start;z-index:61}
+.toast.big.side .rf-big{font-size:22px}
+.toast.big.side .rf-sub{display:none}
+.toast.big.side .rf-who{flex:1 1 100%;font-size:26px;line-height:1.1}
+.toast.big.side .tundo.big{flex:1 1 100%;width:100%;min-height:44px}
+
+/* ---------- キックオフ前：コイントスを上の段で ---------- */
+.koinline{display:flex;align-items:stretch;gap:6px}
+.kosel{position:relative;display:flex;align-items:center;gap:5px;min-height:52px;padding:0 6px;border-radius:12px;border:1px solid var(--line);
+  background:linear-gradient(180deg,var(--sf2-top),var(--sf2-bot));box-shadow:inset 0 1px 0 rgba(255,220,195,.1);cursor:pointer}
+:root.bright .kosel{background:var(--surface)}
+.kosel.set{border-color:var(--copper);box-shadow:inset 0 -3px 0 var(--copper)}
+.kosel:not(.set){border-color:var(--gold);animation:kosel 1.6s infinite}
+@keyframes kosel{50%{box-shadow:0 0 0 4px rgba(255,200,61,.25)}}
+.kosel .ic{width:26px;height:26px;flex:none;display:grid;place-items:center}
+.kosel .ic svg{width:26px;height:26px}
+.kosel .ic.dir{color:var(--copper)}
+.kosel select{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:var(--ink);font-weight:900;font-size:14px;padding:0 18px 0 0;min-height:48px;max-width:8.2em;text-overflow:ellipsis;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink-2) 50%),linear-gradient(135deg,var(--ink-2) 50%,transparent 50%);background-position:right 7px center,right 2px center;background-size:5px 5px;background-repeat:no-repeat}
+.kosel select option{color:#111}
+.tbtn.kickoff-wait{background:var(--surface-2);color:var(--ink-3);border:1px dashed var(--line);opacity:.8}
+
+.koinline .tbtn{min-width:0;padding:0 12px;font-size:17px}
+/* フォーメーション：選手の丸を指で動かす */
+.fp[data-bp]{touch-action:none}
+.fp.fpdrag{z-index:30;transition:none!important;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
+.fp.fpdrag .c{transform:scale(1.18);box-shadow:0 0 0 3px var(--copper),0 6px 14px rgba(0,0,0,.5)}
+
+/* PKのコース：何人目か */
+.pkgoal.map{grid-template-columns:44px 1fr 44px;grid-template-rows:auto auto;max-width:380px}
+.pkgoal.map .pkframe{min-height:120px}
+.pkgoal.map .pkframe>div,.pkgoal.map>div:not(.pkframe){flex-wrap:wrap;gap:3px;padding:3px;align-content:center;min-height:30px}
+.pkn{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-style:normal;font-family:var(--display);font-weight:800;font-size:14px;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.pkn.ok{background:#1f9d57}.pkn.ng{background:#d23a3a}
+.pkorder{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:12.5px;font-weight:800}
+.pkorder li{display:flex;align-items:center;gap:8px}
+.pkorder b{min-width:5em}.pkorder .okt{color:var(--on)}.pkorder .ngt{color:#ff6b6b}
+.paper .pkorder .okt{color:#1d8a4e}.paper .pkorder .ngt{color:#c62828}
+.rp .pkn{width:17px;height:17px;font-size:11px}.rp .pkgoal.map .pkframe{min-height:80px}.rp .pkorder{font-size:10.5px}
+
+/* ---------- ロゴ：KAMAGAKU MATCH LOG ---------- */
+.lmark{display:block;width:100%;height:100%}
+.nav .logo{height:64px}
+.nav .logo #navLogo{display:block;width:52px;height:52px;border-radius:12px;box-shadow:0 0 0 1.5px rgba(255,255,255,.55),0 4px 12px rgba(0,0,0,.35)}
+.nav .logo #navLogo svg{border-radius:12px}
+.lockup{display:inline-flex;align-items:center;gap:12px}
+.lockup .lmark{width:58px;height:58px;flex:none}
+.lk-t{display:flex;flex-direction:column;line-height:1}
+.lk-t small{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.42em;color:#d6c9c4}
+.lk-t b{font-family:var(--display);font-weight:800;font-style:normal;font-size:40px;letter-spacing:.04em;color:#fff}
+.lk-t b i{font-style:normal;color:var(--copper)}
+.herolock{margin-bottom:6px}
+.teams .hero .kicker{font-size:30px}
+:root.bright .herolock .lk-t small{color:#fbe3e6}
+/* 試合レポート（白い紙）では原稿どおりの色 */
+.rp-brand{align-items:flex-end;gap:4px}
+.rp-brand .lockup{gap:8px}
+.rp-brand .lmark{width:36px;height:36px}
+.rp-brand .lk-t small{font-size:9.5px;color:#5a5456;letter-spacing:.38em}
+.rp-brand .lk-t b{font-size:24px;color:#1b1718}
+.rp-brand .lk-t b i{color:#ff7a1a}
+.nav .logo #navLogo svg{width:52px;height:52px}

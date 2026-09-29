@@ -5,6 +5,7 @@
 const TITLES = { post:['試合後','FULL TIME'], teams:['チームを選ぶ','SELECT TEAM'], home:['ホーム','MATCH DAY'], roster:['選手リスト','SQUAD'], record:['試合記録','LIVE'], data:['データ・AI分析','ANALYSIS'] };
 function render(){
   const s = state.ui.screen;
+  document.body.dataset.screen = s;
   applyTheme();
   document.querySelectorAll('[data-nav]').forEach(b => b.setAttribute('aria-current', b.dataset.nav === s ? 'page' : 'false'));
   $('#screenTitle').textContent = TITLES[s][0]; $('#screenEng').textContent = TITLES[s][1];
@@ -12,7 +13,7 @@ function render(){
   $('#syncBadge').textContent = n; $('#syncBadge').classList.toggle('zero', n === 0);
   trackNav();
   $('#main').innerHTML = ({ teams:viewTeams, home:viewHome, roster:viewRoster, record:viewRecord, data:viewData, post:viewPost })[s]();
-  updateClock(); renderPop();
+  updateClock(); renderPop(); keepAwake();
   if(s === 'post' || state.ui.flow?.kind === 'match') centerWheels(document);
 }
 function pitchSVG(){

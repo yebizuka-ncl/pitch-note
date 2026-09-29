@@ -83,8 +83,11 @@ function viewData(){
             <div class="lb">${b.lb}</div></div>`).join('')}</div>
       </section>
     </div>
+    ${trendPanelHTML(ms)}
+    ${winPanelHTML(ev, usName, themName)}
     ${drawPanelsHTML(ms, ev, usName, themName)}
     ${breakdownPanel(ev)}
+    ${causePanelHTML(ev)}
     <section class="card panel">
       <div class="hd"><h3>得点・失点の分析</h3><span class="muted" style="font-size:12px">数字は「得点 - 失点」。状況を入力したゴールだけを数えます</span></div>
       <div class="ga">
@@ -113,14 +116,14 @@ function viewData(){
           return `<div class="mk"><span class="t">${esc(pShort(m, e.period))} ${e.clock}</span>
             <span class="v">動画<br>${vt ? `<b>${vt}</b>` : '—'}</span>
             <span class="d">${e.tag ? `<b>${esc(lbl(MARK_TAGS, e.tag))}</b>` : '<span class="muted">タグなし</span>'}${p ? `　#${p.num} ${esc(family(p.name))}` : ''}${e.note ? `<br>${esc(e.note)}` : ''}${ms.length > 1 ? `<br><span class="muted">vs ${esc(m.opponent)}</span>` : ''}</span>
-            <button class="btn small" data-markedit="${e.id}" type="button">✎</button></div>`; }).join('')
+            ${playBtn(e, m)}<button class="btn small" data-markedit="${e.id}" type="button">✎</button></div>`; }).join('')
           : '<div class="empty">試合中に「★」を押すと、動画で見直したい時間がここにたまります。</div>'}</div>
         <p class="muted" style="font-size:12px;margin:0">「動画」の時間は、そのピリオドのキックオフからの実時間です（給水で止めた時間も含むので、動画のシークにそのまま使えます）。</p>
       </section>
       <section class="card panel">
-        <div class="hd"><h3>👟 選手別（出場時間・シュート）</h3><span class="muted" style="font-size:12px">出場時間はキックオフ時のメンバーと交代から自動計算</span></div>
+        <div class="hd"><h3>👟 選手別（出場時間・シュート）</h3><span class="muted" style="font-size:12px">名前をタップで選手カード。出場時間はキックオフ時のメンバーと交代から自動計算</span></div>
         <div class="tbl-wrap">${prow.length ? `<table class="pstat"><thead><tr><th>選手</th><th>出場</th><th>シュート</th><th>枠内</th><th>ゴール</th><th>アシスト</th><th>★</th><th>🟨</th><th>🟥</th></tr></thead>
-          <tbody>${prow.map(r => `<tr><td><b>#${r.p.num}</b> ${esc(r.p.name)} <span class="muted" style="font-size:12px">${r.p.grade}年</span></td>
+          <tbody>${prow.map(r => `<tr><td><button type="button" class="plink" data-pcardopen="${r.p.id}"><b>#${r.p.num}</b> ${esc(r.p.name)} <span class="muted" style="font-size:12px">${r.p.grade}年</span> 🪪</button></td>
             <td><span class="num">${Math.round(r.sec/60)}</span>分</td><td><span class="num">${r.shots}</span></td><td><span class="num">${r.onT}</span></td>
             <td><span class="num">${r.goals}</span></td><td><span class="num">${r.ast}</span></td><td><span class="num">${r.marks}</span></td><td><span class="num">${r.y || ''}</span></td><td><span class="num">${r.r || ''}</span></td></tr>`).join('')}</tbody></table>`
           : '<div class="empty">キックオフを記録すると、選手ごとの出場時間が出ます</div>'}</div>
@@ -144,18 +147,18 @@ function breakdownPanel(ev){
       return { n:a.length, sub:a.length ? `枠内${a.filter(e => e.result === 'goal' || e.result === 'on').length}・G${a.filter(e => e.result === 'goal').length}` : '' }; };
     return { label:f.label, u:c('us'), t:c('them') }; }).filter(r => r.u.n || r.t.n);
   const ckToShot = c => ev.some(x => x.type === 'shot' && x.team === c.team && x.matchId === c.matchId && x.period === c.period && x.sec >= c.sec && x.sec - c.sec <= 15);
-  const ckRows = [...CK_TYPES, { id:null, label:'種類なし' }].map(k => { const c = t => { const a = ev.filter(e => e.type === 'ck' && e.team === t && (e.ckType || null) === k.id);
+  const ckRows = [...CK_SIDES, { id:null, label:'左右なし' }].map(k => { const c = t => { const a = ev.filter(e => e.type === 'ck' && e.team === t && (e.side || null) === k.id);
       return { n:a.length, sub:a.length ? `→シュート${a.filter(ckToShot).length}` : '' }; };
     return { label:k.label, u:c('us'), t:c('them') }; }).filter(r => r.u.n || r.t.n);
-  const fkRows = FK_KINDS.flatMap(k => FK_PLAYS.map(pl => { const c = t => { const a = ev.filter(e => e.type === 'fk' && e.team === t && e.fkKind === k.id && e.fkPlay === pl.id);
+  const fkRows = [null].flatMap(k => FK_PLAYS2.map(pl => { const c = t => { const a = ev.filter(e => e.type === 'fk' && e.team === t && fkPlay2(e) === pl.id);
       const sh = pl.id === 'shot' ? ev.filter(x => x.type === 'shot' && x.fkShot && x.team === t && a.some(f => f.matchId === x.matchId && f.period === x.period && f.sec === x.sec)) : [];
       return { n:a.length, sub:pl.id === 'shot' && a.length ? `枠内${sh.filter(x => x.result === 'goal' || x.result === 'on').length}・G${sh.filter(x => x.result === 'goal').length}` : '' }; };
-    return { label:`${k.label}→${pl.label}`, u:c('us'), t:c('them') }; })).filter(r => r.u.n || r.t.n);
+    return { label:`FK→${pl.label}`, u:c('us'), t:c('them') }; })).filter(r => r.u.n || r.t.n);
   const tbl = (title, rows) => `<div><h4 style="margin:0 0 6px;font-size:12.5px;font-weight:900;color:var(--ink-2)">${title}</h4>${rows.length ? `<table>
     <thead><tr><th></th><th class="us">自チーム</th><th class="them">相手</th></tr></thead>
     <tbody>${rows.map(r => `<tr><td>${r.label}</td><td>${cell(r.u)}</td><td>${cell(r.t)}</td></tr>`).join('')}</tbody></table>` : '<div class="muted" style="font-size:12.5px">まだありません</div>'}</div>`;
   return `<section class="card panel"><div class="hd"><h3>🔍 シュートとセットプレーの内訳</h3><span class="muted" style="font-size:12px">G＝ゴール。CKの→シュートは15秒以内</span></div>
-    <div class="bd">${tbl('足別のシュート', footRows)}${tbl('CKの種類', ckRows)}${tbl('FKの種類と狙い', fkRows)}</div></section>`;
+    <div class="bd">${tbl('足別のシュート', footRows)}${tbl('CK（左右）', ckRows)}${tbl('FK', fkRows)}</div></section>`;
 }
 function formationPanel(all, m){
   const key = e => e.period * 100000 + e.sec;
@@ -172,7 +175,7 @@ function formationPanel(all, m){
   return `<section class="card panel">
     <div class="hd"><h3>📋 フォーメーション別</h3><span class="muted" style="font-size:12px">行をタップすると、その時間帯の配置を表示します</span></div>
     <div class="fmpanel">
-      ${boardHTML({ m, usShape:f.us.shape, usPlayers:f.us.slots.map(s => s.num != null ? s : null), themShape:f.them.shape })}
+      ${boardHTML({ m, usShape:f.us.shape, usPlayers:f.us.slots.map(s => s.num != null ? s : null), themShape:f.them.shape, usPos:f.us.pos, themPos:f.them.pos })}
       <div class="tbl-wrap"><table>
         <thead><tr><th>時間帯</th><th>自</th><th>相手</th><th>シュート</th><th>得点</th></tr></thead>
         <tbody>${periods.map((p, i) => `<tr data-fmrow="${i}" class="${i===sel?'on':''}">

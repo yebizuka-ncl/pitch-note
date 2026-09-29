@@ -28,7 +28,10 @@ function starterSheet(then){
       <button type="button" data-ststep="1" aria-pressed="${f.step===1}" data-fmteam="x">① フォーメーション <b>${f.shape || '—'}</b></button>
       <button type="button" data-ststep="2" aria-pressed="${f.step===2}" data-fmteam="x" ${f.shape ? '' : 'disabled'}>② 選手の配置 <b>${f.slots.filter(Boolean).length}/11</b></button></div>`;
   if(f.step === 1){
+    const KITS = teamKits(), mk = m.kit || 1;
     openSheet(`<h2>👥 ${esc(per.label)}のスタメン設定</h2>${steps}
+      <div class="stkitrow"><span class="q">今日のユニフォーム</span>
+        <div class="kitpick" role="group" aria-label="今日のユニフォーム">${[1,2].map(n => `<button type="button" data-stkit="${n}" aria-pressed="${mk===n}"><span class="sw" style="background:linear-gradient(135deg,${KITS[n].a} 0 62%,${KITS[n].b} 62%)"></span><span><span class="disp" style="font-size:20px">${KITS[n].label}</span> ユニフォーム</span></button>`).join('')}</div></div>
       <div class="st1">
         <div class="fmgroups">
           ${FM_GROUPS.map(([g, list]) => `<div class="g"><span>${g}</span><div class="chips fmc">${list.map(k => `<button type="button" data-stshape="${k}" aria-pressed="${f.shape===k}">${k}</button>`).join('')}</div></div>`).join('')}
@@ -61,7 +64,7 @@ function starterSheet(then){
       <button class="btn small" data-stclear type="button">全部外す</button><span style="flex:1"></span>
       <span class="stcount ${n === 11 ? 'ok' : 'ng'}">${n}<small style="font-size:15px"> / 11</small></span>
       <button class="btn" data-close type="button">閉じる</button>
-      <button class="btn primary" data-stok type="button" ${gkOk && n >= 7 ? '' : 'disabled'}>${f.then === 'ko' ? '決定してキックオフ設定へ' : '決定'}</button></div>`, 'xwide');
+      <button class="btn primary" data-stok type="button" ${gkOk && n >= 7 ? '' : 'disabled'}>決定</button></div>`, 'xwide');
 }
 function stAssign(pid, i){
   const f = state.ui.flow, k = f.slots.indexOf(pid);
@@ -87,7 +90,8 @@ function confirmStarters(){
   save.fm();
   const then = f.then; state.ui.flow = null;
   if(sel.length < 11) toast(`${sel.length}人で登録しました`);
-  if(then === 'ko') kickoffSheet(false); else { closeSheet(); render(); }
+  closeSheet(); render();
+  if(then === 'ko') toast(curPer()?.kickoff && curPer()?.attack ? 'スタメンOK。笛が鳴ったら ⚽ KICK OFF' : 'スタメンOK。上の 🪙 と 🥅 を選んで ⚽ KICK OFF');
 }
 function openEdit(id){
   const e = state.events.find(x => x.id === id); if(!e || e.type === 'kickoff') return;
@@ -110,10 +114,10 @@ function saveEdit(){
     const p = e.team === 'us' ? player(d.playerId) : null;
     Object.assign(e, { playerId:p?.id ?? null, num:p?.num ?? null, name:p?.name ?? null, grade:p?.grade ?? null });
   }
-  if(e.type === 'ck' && d.ckType){ const t = CK_TYPES.find(x => x.id === d.ckType); Object.assign(e, { ckType:t.id, side:t.side, style:t.style }); }
-  if(e.type === 'fk'){ e.fkKind = d.fkKind; e.fkPlay = d.fkPlay; }
+  if(e.type === 'ck' && d.ckType && d.ckType !== e.ckType){ const t = CK_TYPES.find(x => x.id === d.ckType); if(t) Object.assign(e, { ckType:t.id, side:t.side, style:t.style }); }
+  if(e.type === 'fk' && d.fkPlay && fkPlay2({ fkPlay:d.fkPlay }) !== fkPlay2(e)) e.fkPlay = d.fkPlay;
   if(e.type === 'og'){ e.playerId = e.team === 'them' ? d.playerId : null; e.oppNum = e.team === 'us' ? d.oppNum : null; }
-  e.synced = false; save.events(); closeSheet(); toast('記録を直しました'); render();
+  e.check = false; e.synced = false; save.events(); closeSheet(); toast('記録を直しました'); render();
 }
 function openGoal(id){
   const e = state.events.find(x => x.id === id); if(!e) return;
@@ -176,8 +180,10 @@ function renderSheet(){
       fields += `<span class="q">結果</span>${chipsHTML(RESULTS.filter(r => !e.pk || r.id !== 'block'), 'result', d.result)}<span class="q">足</span>${chipsHTML(FEET, 'foot', d.foot)}`;
       if(d.team === 'us') fields += `<span class="q">打った選手</span><div class="chips">${ps.map(p => `<button type="button" data-g="playerId" data-v="${p.id}" aria-pressed="${d.playerId===p.id}">#${p.num} ${esc(family(p.name))}</button>`).join('')}</div>`;
     }
-    if(e.type === 'ck') fields += `<span class="q">CKの種類</span>${chipsHTML(CK_TYPES, 'ckType', d.ckType)}`;
-    if(e.type === 'fk') fields += `<span class="q">種類</span>${chipsHTML(FK_KINDS, 'fkKind', d.fkKind)}<span class="q">どうした？</span>${chipsHTML(FK_PLAYS, 'fkPlay', d.fkPlay)}`;
+    if(e.type === 'ck') fields += `<span class="q">左右</span>${chipsHTML(CK_SIDES, 'ckType', CK_TYPES.find(x => x.id === d.ckType)?.side || null)}`;
+    if(e.type === 'fk') fields += `<span class="q">どうした？</span>${chipsHTML(FK_PLAYS2, 'fkPlay', d.fkPlay === 'shot' ? 'shot' : d.fkPlay ? 'kick' : null)}`;
+    if(isConceded(e) && e.type === 'og') fields += `<span class="q">失点の原因</span>${causeChipsHTML(e, 'data-gcause')}`;
+    if(e.check) fields += `<span class="q">？ 要確認</span><div class="muted" style="font-size:13px">内容を確かめて「保存」すると、？の印が外れます</div>`;
     if(e.type === 'og') fields += d.team === 'them'
       ? `<span class="q">自チームの選手</span><div class="chips">${ps.map(p => `<button type="button" data-g="playerId" data-v="${p.id}" aria-pressed="${d.playerId===p.id}">#${p.num} ${esc(family(p.name))}</button>`).join('')}</div>`
       : `<span class="q">相手の背番号</span>${numGrid('oppNum', d.oppNum)}`;
@@ -265,6 +271,7 @@ function renderSheet(){
           <div class="q"><b>③</b> フィニッシュ</div>
           ${chipsHTML(FEET, 'foot', d.foot)}
           ${chipsHTML(TOUCH, 'touch', d.touch)}
+          ${!us ? `<div class="q">失点の原因 <span class="muted">（複数OK・練習テーマ決めに使います）</span></div>${causeChipsHTML(e, 'data-gcause')}` : ''}
           ${!us ? `<div class="q">相手の得点者（背番号） <span class="muted">（任意）</span></div>${numGrid('oppNum', d.oppNum)}` : ''}
           ${us && assists.length ? `<div class="q">アシスト <span class="muted">（任意）</span></div>
             <div class="chips">${assists.map(p => `<button type="button" data-g="assistId" data-v="${p.id}" aria-pressed="${d.assistId===p.id}">#${p.num} ${esc(family(p.name))}</button>`).join('')}</div>` : ''}
@@ -302,6 +309,7 @@ function halftimeSheet(){
     </div>
     ${pend.length ? `<p style="font-size:13px"><span class="chip warn">状況が未入力のゴール ${pend.length}件</span>　${pend.map(e => `<button class="btn small attn" data-goaledit="${e.id}" type="button">${esc(pShort(m, e.period))} ${e.clock} ${e.team==='us'?'得点':'失点'}</button>`).join(' ')}</p>` : ''}
     <p style="font-size:13px">話し合いのヒント：PA内から打てている？　被シュートはどのレーンから？　CKはシュートまでつながった？　★マークの場面は？</p>
+    ${htVisHTML(m, p)}
     ${htPointsHTML(m)}
     ${boardsHTML(m)}
     <div class="row"><button class="btn primary" data-close type="button">閉じる</button></div>`, 'wide');

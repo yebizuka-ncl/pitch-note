@@ -215,7 +215,7 @@ function spKick(e){
   return e.x != null ? { x:e.x, y:e.y } : null;
 }
 function maybeSetPieceSketch(e){
-  if(!state.meta.settings.drawSP) return;
+  if(!state.meta.settings.drawSP || LV() !== 'full') return;
   if(e.type === 'fk' && !(e.team === 'us' ? e.x >= 70 : e.x <= 35)) return;   // 攻撃側のアタッキングサードのFKだけ
   setTimeout(() => { if(state.ui.screen === 'record' && !state.ui.flow) sketchEvent(e.id, true); }, 250);
 }
@@ -297,20 +297,29 @@ function pkGridHTML(sel, attr){
   const b = (k, cls) => `<button type="button" class="${cls}" data-${attr}="${k}" aria-pressed="${sel === k}" aria-label="${PK_LABEL[k]}">${cls.startsWith('out') ? PK_LABEL[k] : ''}</button>`;
   return `<div class="pkgoal">${b('OT', 'out top')}${b('OL', 'out left')}<div class="pkframe">${PK_IN.map(k => b(k, 'in')).join('')}</div>${b('OR', 'out right')}</div>`;
 }
+// PKのコース：マスの中に「何人目か」の丸（緑＝成功・赤＝失敗）。試合中のPKは「P」
+const pkTag = x => `<i class="pkn ${x.ok ? 'ok' : 'ng'}" title="${esc(x.label)}">${x.no ?? 'P'}</i>`;
 function pkMapHTML(list){
-  const cnt = k => { const xs = list.filter(x => x.course === k); return { ok:xs.filter(x => x.ok).length, ng:xs.filter(x => !x.ok).length }; };
-  const cell = (k, cls) => { const c = cnt(k); return `<div class="${cls}">${c.ok ? `<b class="ok">○${c.ok}</b>` : ''}${c.ng ? `<b class="ng">×${c.ng}</b>` : ''}</div>`; };
+  const cell = (k, cls) => `<div class="${cls}">${list.filter(x => x.course === k).map(pkTag).join('')}</div>`;
   return `<div class="pkgoal map">${cell('OT', 'out top')}${cell('OL', 'out left')}<div class="pkframe">${PK_IN.map(k => cell(k, 'in')).join('')}</div>${cell('OR', 'out right')}</div>`;
 }
 function pkList(evs){
-  return evs.flatMap(e => e.type === 'shot' && e.pk && e.pkCourse ? [{ team:e.team, course:e.pkCourse, ok:e.result === 'goal' }]
-    : e.type === 'pkso' && e.course ? [{ team:e.team, course:e.course, ok:!!e.scored }] : []);
+  const who = e => e.team === 'us' ? (e.num ? `#${e.num} ${family(e.name)}` : '') : (e.oppNum ?? e.goal?.oppNum) != null ? `#${e.oppNum ?? e.goal.oppNum}` : '';
+  return evs.flatMap(e => {
+    if(e.type === 'shot' && e.pk && e.pkCourse){ const m = match(e.matchId);
+      return [{ team:e.team, course:e.pkCourse, ok:e.result === 'goal', no:null, who:who(e), when:`${pShort(m, e.period)} ${e.clock}`, label:`試合中のPK ${pShort(m, e.period)} ${e.clock} ${who(e)}` }]; }
+    if(e.type === 'pkso' && e.course) return [{ team:e.team, course:e.course, ok:!!e.scored, no:e.no, who:who(e), label:`${e.no}人目 ${who(e)}` }];
+    return []; });
+}
+function pkOrderHTML(list){
+  if(!list.length) return '';
+  return `<ol class="pkorder">${list.map(x => `<li>${pkTag(x)}<span>${x.no ? `${x.no}人目` : `PK ${esc(x.when)}`}</span><b>${esc(x.who || '')}</b><span class="muted">${esc(PK_LABEL[x.course] || '')}</span><span class="${x.ok ? 'okt' : 'ngt'}">${x.ok ? '成功' : '失敗'}</span></li>`).join('')}</ol>`;
 }
 function pkPanelHTML(evs, usName, themName){
   const l = pkList(evs); if(!l.length) return '';
-  return `<div class="pkmaps"><div><h4>${esc(usName)}のキッカー（${l.filter(x => x.team === 'us').length}本）</h4>${pkMapHTML(l.filter(x => x.team === 'us'))}</div>
-    <div><h4>${esc(themName)}のキッカー（${l.filter(x => x.team === 'them').length}本）</h4>${pkMapHTML(l.filter(x => x.team === 'them'))}</div></div>
-    <div class="sm muted">キッカーから見た向き。○成功 ×失敗</div>`;
+  const side = (t, n) => { const xs = l.filter(x => x.team === t); return `<div><h4>${esc(n)}のキッカー（${xs.length}本）</h4>${pkMapHTML(xs)}${pkOrderHTML(xs)}</div>`; };
+  return `<div class="pkmaps">${side('us', usName)}${side('them', themName)}</div>
+    <div class="sm muted">キッカーから見た向き。丸の数字＝PK戦の何人目か（Pは試合中のPK）。緑＝成功・赤＝失敗</div>`;
 }
 
 /* ---------- 時間帯別（15分ごと） ---------- */

@@ -36,7 +36,7 @@ function stepOf(m){
 function stepperHTML(m){
   if(!m) return '';
   const now = stepOf(m);
-  const nextLabel = { 1:'出欠OK → スタメンへ', 2:'スタメンを決める', 3:'🪙 COIN TOSSへ', 4:'試合を記録', 5:'' }[now];
+  const nextLabel = { 1:'出欠OK → スタメンへ', 2:'スタメンを決める', 3:'⚽ キックオフへ', 4:'試合を記録', 5:'' }[now];
   return `<nav class="stepper" aria-label="試合日の流れ">
     ${STEPS.map(s => `<button type="button" data-step="${s.id}" class="${s.id < now ? 'done' : s.id === now ? 'now' : ''}" ${s.id > now + 1 && s.id !== 5 ? 'disabled' : ''}>
       <i>${s.id < now ? '✓' : s.id}</i><span><small>${s.en}</small>${s.label}</span></button>`).join('<b class="sep">›</b>')}
@@ -47,7 +47,7 @@ function goStep(n){
   const m = cur() || match(state.ui.postMatch); if(!m) return;
   if(n === 1){ state.ui.screen = 'roster'; render(); return; }
   if(n === 2){ m.flow = { ...(m.flow || {}), att:true }; save.matches(); state.ui.screen = 'record'; render(); state.ui.flow = null; starterSheet(null); return; }
-  if(n === 3){ state.ui.screen = 'record'; render(); if(!m.lineupSet){ starterSheet('ko'); } else { state.ui.flow = null; kickoffSheet(!!m.periods[state.timer.p]?.kickoff); } return; }
+  if(n === 3){ state.ui.screen = 'record'; render(); if(!m.lineupSet){ starterSheet('ko'); } return; }
   if(n === 4){ state.ui.screen = 'record'; render(); return; }
   if(n === 5){ state.ui.postMatch = m.id; state.ui.screen = 'post'; render(); return; }
 }
@@ -101,8 +101,10 @@ function matchSheet(id){
   openSheet(`<h2>${m ? '試合の予定を編集' : '試合を作る'}</h2>${matchFormHTML(m)}
     <div class="row">${m ? '<button class="btn danger" data-mdelplan type="button">この予定を削除</button><span style="flex:1"></span>' : ''}
       <button class="btn" data-close type="button">キャンセル</button>
-      <button class="btn" data-msave="plan" type="button">📅 予定として保存</button>
-      <button class="btn primary" data-msave="start" type="button">▶ 今日の試合を始める</button></div>`, 'xwide');
+      ${m ? '' : '<button class="btn" data-msave="next" type="button">📅 保存して、次の予定も作る</button>'}
+      <button class="btn ${liveNow() ? 'primary' : ''}" data-msave="plan" type="button">📅 予定として保存</button>
+      ${liveNow() ? '' : '<button class="btn primary" data-msave="start" type="button">▶ 今日の試合を始める</button>'}</div>
+    ${liveNow() ? '<p class="muted" style="font-size:12.5px;margin:0">記録中の試合があるので、予定として保存だけできます。</p>' : ''}`, 'xwide');
 }
 function readMatchForm(base){
   const kind = $('#mKind').value, num = (sel, lo, hi, def) => Math.min(hi, Math.max(lo, parseInt($(sel)?.value, 10) || def));
@@ -114,7 +116,7 @@ function readMatchForm(base){
   const pre = [0,1,2].map(i => $('#pp' + i).value.trim()).filter(Boolean).map((text, i) => ({ text, eval:base?.points?.pre?.[i]?.eval || null }));
   m.points = { ...(m.points || {}), pre };
   const sp = kind === '公式戦' ? 'mSubO' : 'mSubP';
-  if($('#' + sp + 'Lim')) m.subs = { limit:+$('#' + sp + 'Lim').value || 0, reentry:!!$('#' + sp + 'Re').checked };
+  if($('#' + sp + 'Lim')) m.subs = { limit:+$('#' + sp + 'Lim').value || 0, reentry:!!$('#' + sp + 'Re').checked, htFree:!!$('#' + sp + 'Ht')?.checked };
   if(kind === '公式戦') m.reg = { limit:+($('#mRegN')?.value || 20), ids:m.reg?.ids || [] };
   if(!base || !m.periods.some((p, i) => isStarted(m, i))){
     let periods;
@@ -135,6 +137,7 @@ function saveMatchForm(mode){
   team().lastKit = m.kit; save.teams(); state.ui.setupKit = null; state.ui.recSel = null;
   save.matches(); closeSheet();
   if(mode === 'start') beginMatch(m.id);
+  else if(mode === 'next'){ toast(`${dateJP(m.date)} vs ${m.opponent} を保存しました。続けて次の予定を入力できます`); render(); matchSheet(null); centerWheels($('#sheet')); }
   else { toast(`${dateJP(m.date)} vs ${m.opponent} を予定に保存しました`); render(); }
 }
 function beginMatch(id){
@@ -196,12 +199,18 @@ function viewPost(){
   const pt = m.points || {}, evalRow = (kind, list) => list.map((x, i) => `<div class="evrow"><span>${esc(x.text)}</span>
     <div class="chips">${EVALS.map(v => `<button type="button" data-peval="${kind}:${i}:${v.id}" aria-pressed="${x.eval === v.id}">${v.label}</button>`).join('')}</div></div>`).join('');
   return `<div class="post">
-    ${m.id === state.current || !m.endedAt ? stepperHTML(m) : stepperHTML(m)}
+    ${stepperHTML(m)}
+    <div class="row" style="justify-content:flex-start"><button class="btn" data-nav="home" type="button">🏠 トップに戻る</button></div>
     <section class="card panel">
       <div class="hd"><h3>試合前のポイント・修正点をふり返る</h3><span class="muted" style="font-size:12px">チームで話し合って評価をつけましょう</span></div>
       ${(pt.pre || []).length ? `<div class="q">試合前のポイント</div>${evalRow('pre', pt.pre)}` : '<div class="muted" style="font-size:13px">試合前のポイントは入力されていません（試合を作るときに入力できます）</div>'}
       ${(pt.ht || []).length ? `<div class="q" style="margin-top:6px">ハーフタイムの修正点</div>${evalRow('ht', pt.ht)}` : ''}
     </section>
+    ${gapPanelHTML(m)}
+    ${reviewPanelHTML(m)}
+    ${bestPanelHTML(m)}
+    ${playerCardsHTML(m)}
+    ${videoPanelHTML(m)}
     <section class="card panel">
       <div class="hd"><h3>📄 試合レポート</h3>
         <div class="expbtns"><span class="muted" style="font-size:12px">出力：</span>
@@ -241,7 +250,7 @@ function reportHTML(m){
       <div><div class="rp-meta">${esc(dateJP(m.date))}　${esc(m.tournament || m.kind)}${m.tournament ? `（${esc(m.kind)}）` : ''}</div>
         <div class="rp-title"><span>${esc(m.ourName)}</span><b>${goalsOf(ev,'us')} - ${goalsOf(ev,'them')}</b><span>${esc(m.opponent)}</span></div>
         <div class="rp-meta">${perScores}${pk.na + pk.nb ? `　PK ${pk.a}-${pk.b}` : ''}</div></div>
-      <div class="rp-brand">PITCH NOTE<small>${esc(team().name)}</small></div>
+      <div class="rp-brand">${logoLockup(kitOf(m).a, kitOf(m).b)}<small>${esc(team().name)}</small></div>
     </header>
     <div class="rp-grid">
       <div class="rp-col">
@@ -259,10 +268,13 @@ function reportHTML(m){
         <h4>出場選手</h4>
         <table class="rp-t"><tr class="th"><td>選手</td><td>分</td><td>S</td><td>G</td><td>A</td><td></td></tr>
           ${rows.map(r => { const s = stat(r.p.id); return `<tr><td>#${r.p.num} ${esc(family(r.p.name))}</td><td>${Math.round(r.s / 60)}</td><td>${s.sh || ''}</td><td>${s.g || ''}</td><td>${s.a || ''}</td><td>${s.c}</td></tr>`; }).join('')}</table>
-        ${subs.length ? `<h4>交代</h4><div class="sm">${subs.map(e => `${esc(pShort(m, e.period))} ${e.clock} ${e.team === 'them' ? '相手 ' : ''}#${e.outNum}→#${e.inNum}`).join('　')}</div>` : ''}
+        ${subs.length ? `<h4>交代</h4><div class="sm">${subs.map(e => `${esc(pShort(m, e.period))} ${e.clock} ${e.team === 'them' ? `相手 #${e.outNum ?? '?'}→#${e.inNum}` : `#${e.outNum} ${esc(family(e.outName || ''))} → #${e.inNum} ${esc(family(e.inName || ''))}`}`).join('<br>')}</div>` : ''}
+        ${oppNotesLine(m) ? `<h4>相手の注意選手</h4><div class="sm">${esc(oppNotesLine(m))}</div>` : ''}
         ${cards.length ? `<h4>カード</h4><div class="sm">${cards.map(e => esc(evText(e, m))).join('　')}</div>` : ''}
         ${(pts.pre || []).length ? `<h4>試合前のポイント</h4><div class="sm">${pts.pre.map(x => `${x.eval || '・'} ${esc(x.text)}`).join('<br>')}</div>` : ''}
         ${(pts.ht || []).length ? `<h4>修正点</h4><div class="sm">${pts.ht.map(x => `${x.eval || '・'} ${esc(x.text)}`).join('<br>')}</div>` : ''}
+        ${m.review?.good || m.review?.issue || m.review?.next ? `<h4>ふり返り</h4><div class="sm">${[['good','良'],['issue','課題'],['next','次の練習']].filter(([k]) => m.review[k]).map(([k, l]) => `<b>${l}</b> ${esc(m.review[k]).replace(/\n/g, ' ')}`).join('<br>')}${m.review.tags?.length ? `<br><b>原則</b> ${m.review.tags.map(esc).join('・')}` : ''}</div>` : ''}
+        ${m.best?.id && state.events.find(e => e.id === m.best.id && !e.deleted) ? `<h4>🏆 ベストプレー</h4><div class="sm">${esc(sceneLabel(state.events.find(e => e.id === m.best.id), m))}${m.best.note ? `「${esc(m.best.note)}」` : ''}</div>` : ''}
         ${marks.length ? `<h4>動画チェック（★${marks.length}）</h4><div class="sm">${marks.slice(0, 8).map(e => `${esc(pShort(m, e.period))} ${e.clock}${e.tag ? ' ' + esc(lbl(MARK_TAGS, e.tag)) : ''}`).join('　')}</div>` : ''}
         ${m.recorders?.length ? `<div class="sm" style="margin-top:6px">記録：${m.recorders.map(r => esc(recorderLabel(r))).join('、')}</div>` : ''}
       </div>
@@ -291,7 +303,7 @@ async function exportReport(kind){
   try{
     if(kind === 'csv'){
       const head = ['ピリオド','時刻','種類','チーム','内容','選手','背番号','結果','エリア','ゾーン','足','x','y'];
-      const typeJP = { shot:'シュート', ck:'CK', fk:'FK', og:'オウンゴール', sub:'交代', card:'カード', mark:'★マーク', formation:'フォーメーション', kickoff:'キックオフ', break:'給水', pkso:'PK戦' };
+      const typeJP = { shot:'シュート', ck:'CK', fk:'FK', og:'オウンゴール', sub:'交代', card:'カード', mark:'★マーク', formation:'フォーメーション', kickoff:'キックオフ', break:'給水', pkso:'PK戦', win:'ボール奪取' };
       const rows = evOf(m.id).map(e => [pLabel(m, e.period), e.clock, typeJP[e.type] || e.type, e.team === 'us' ? m.ourName : m.opponent, evText(e, m),
         e.name || '', e.num || e.oppNum || '', e.result ? RES[e.result]?.label : '', e.area ? AREA[e.area] : '', e.zoneLabel || '', e.foot ? lbl(FEET, e.foot) : '', e.x ?? '', e.y ?? '']);
       const csv = '﻿' + [head, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
@@ -324,6 +336,8 @@ function resultText(m){
     m.periods.filter(p => p.kind !== 'pk').map(p => { const i = m.periods.indexOf(p), pe = ev.filter(e => e.period === i); return `${p.label} ${goalsOf(pe,'us')}-${goalsOf(pe,'them')}`; }).join(' / '),
     goals.filter(g => g.team === 'us').length ? '得点：' + goals.filter(g => g.team === 'us').map(g => `${pShort(m, g.period)} ${g.clock} ${who(g)}`).join('、') : '',
     (m.points?.pre || []).length ? '今日のテーマ：' + m.points.pre.map(x => `${x.eval || ''}${x.text}`).join('、') : '',
+    m.best?.id && state.events.find(e => e.id === m.best.id && !e.deleted) ? `ベストプレー：${sceneLabel(state.events.find(e => e.id === m.best.id), m)}${m.best.note ? `「${m.best.note}」` : ''}` : '',
+    m.review?.next ? `次の練習でやること：${m.review.next.replace(/\n/g, ' ')}` : '',
   ].filter(Boolean).join('\n');
 }
 
@@ -426,7 +440,8 @@ async function gasPush(){
   const matches = state.matches.filter(m => ids.has(m.id)).map(m => { const ev = evOf(m.id), pk = pkState(m, ev);
     return { ...m, teamName:(state.teams.find(t => t.id === m.teamId) || {}).name, scoreUs:goalsOf(ev,'us'), scoreThem:goalsOf(ev,'them'), pk:pk.na + pk.nb ? `${pk.a}-${pk.b}` : '',
       recordersText:(m.recorders || []).map(recorderLabel).join('、'),
-      pointsText:[...(m.points?.pre || []).map(x => `[前]${x.eval || ''}${x.text}`), ...(m.points?.ht || []).map(x => `[HT]${x.eval || ''}${x.text}`)].join(' / ') }; });
+      pointsText:[...(m.points?.pre || []).map(x => `[前]${x.eval || ''}${x.text}`), ...(m.points?.ht || []).map(x => `[HT]${x.eval || ''}${x.text}`),
+        ...[['good','良'],['issue','課題'],['next','次']].filter(([k]) => m.review?.[k]).map(([k, l]) => `[${l}]${m.review[k].replace(/\n/g, ' ')}`)].join(' / ') }; });
   const events = evs.map(e => { const m = match(e.matchId); return { ...e, text:m ? evText(e, m) : '' }; });
   const r = await gasCall('push', { team:team(), roster:state.roster, matches, events });
   evs.forEach(e => e.synced = true); state.matches.forEach(m => delete m.dirty); save.matches();

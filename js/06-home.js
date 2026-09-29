@@ -56,6 +56,7 @@ function viewHome(){
       <div class="row">
         <button class="hero-start" data-stepnext type="button"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg>次へ：${STEPS[Math.max(0, stepOf(m) - 1)].label}</button>
         <button class="ghost" data-endmatch type="button">試合を終了する</button>
+        <button class="ghost" data-newmatch type="button">＋ 別の試合の予定を作る</button>
       </div>` : `
       <div class="kicker">MATCH <i>DAY</i></div>
       <div class="date">予定の試合から始めるか、新しく作ります</div>
@@ -73,6 +74,7 @@ function viewHome(){
           <button class="btn primary" data-sync type="button" ${n || state.meta.gas?.url ? '' : 'disabled'}>☁️ Wi-Fiで同期する</button>
         </div>
       </section>
+      ${lastReviewHTML()}
       <section class="card history">
         <div class="section-title">これまでの試合（日付ごと）</div>
         ${dates.length ? dates.map(dt => { const ms = done.filter(x => x.date === dt);
@@ -80,7 +82,7 @@ function viewHome(){
           ${ms.map(h => `<button class="hist-item" data-openmatch="${h.id}" type="button">
             <span class="kitdot" style="background:linear-gradient(180deg,${kitOf(h).a} 0 65%,${kitOf(h).b} 65%)"></span>
             <span class="nm">vs ${esc(h.opponent)} <span class="ptag">${esc(h.tournament || h.kind)}</span>${h.id === state.current ? ' <span class="chip us">記録中</span>' : ''}${h.sample ? ' <span class="chip warn">サンプル</span>' : ''}</span>
-            <span class="sc">${esc(scoreText(h))}</span></button>`).join('')}`; }).join('')
+            <span class="sc">${esc(scoreText(h))}</span>${resultChip(h)}</button>`).join('')}`; }).join('')
           : '<div class="empty">まだ試合の記録がありません</div>'}
       </section>
     </div>

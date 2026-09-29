@@ -12,19 +12,26 @@ function teamStats(evs, team){
     avgDist:open.length ? Math.round(open.reduce((a,e) => a + e.dist, 0) / open.length) : null,
     ck:cks.length, ckShot:cks.filter(c => shots.some(x => x.matchId === c.matchId && x.period === c.period && x.sec >= c.sec && x.sec - c.sec <= 15)).length,
     fk:s.filter(e => e.type === 'fk').length, pk:shots.filter(e => e.pk).length,
+    xg:xgSum(shots), win:s.filter(e => e.type === 'win').length,
+    winHigh:s.filter(e => e.type === 'win' && e.x != null && thirdFor(e) === '敵陣').length,
+    winShot:s.filter(e => e.type === 'win' && winToShot(evs, e)).length,
   };
 }
 const rate = (a, b) => b ? `<small>（${Math.round(a/b*100)}%）</small>` : '';
 function compareTable(evs, usName, themName){
   const u = teamStats(evs, 'us'), t = teamStats(evs, 'them');
   const rows = [
-    ['得点', u.goals, t.goals, '', '', true], ['シュート', u.shots, t.shots],
+    ['得点', u.goals, t.goals, '', '', true],
+    ...(u.shots + t.shots ? [['ゴール期待値<br><small class="muted">xG・入りそうだった点数</small>', u.xg.toFixed(1), t.xg.toFixed(1), '', '', false, true]] : []),
+    ['シュート', u.shots, t.shots],
     ['枠内', u.onT, t.onT, rate(u.onT, u.shots), rate(t.onT, t.shots)],
     ['PA内から', u.inPA, t.inPA, rate(u.inPA, u.shots), rate(t.inPA, t.shots)],
     ['枠外', u.off, t.off], ['ブロックされた', u.block, t.block],
     ['平均距離', u.avgDist != null ? `${u.avgDist}<small>m</small>` : '—', t.avgDist != null ? `${t.avgDist}<small>m</small>` : '—', '', '', false, true],
     ['CK', u.ck, t.ck], ['CK→シュート<br><small class="muted">15秒以内</small>', u.ckShot, t.ckShot, rate(u.ckShot, u.ck), rate(t.ckShot, t.ck)],
     ['FK', u.fk, t.fk], ['PK', u.pk, t.pk],
+    ...(u.win + t.win ? [['ボール奪取', u.win, t.win], ['敵陣で奪取', u.winHigh, t.winHigh, rate(u.winHigh, u.win), rate(t.winHigh, t.win)],
+      ['奪取→シュート<br><small class="muted">10秒以内</small>', u.winShot, t.winShot, rate(u.winShot, u.win), rate(t.winShot, t.win)]] : []),
   ];
   return `<div class="cmp"><div class="cmp-head"><span>${esc(usName)}</span><span></span><span>${esc(themName)}</span></div>
     ${rows.map(([l, a, b, sa='', sb='', key=false, nobar=false]) => { const mx = Math.max(1, +a || 0, +b || 0);

@@ -5,8 +5,8 @@
    m.subs = { limit:0(無制限)|n, reentry:true|false }
    ========================================================= */
 const REG_SIZES = [20, 25];
-const SUB_LIMITS = [0, 3, 4, 5, 6, 7, 9, 11];
-const SUB_DEFAULT = kind => kind === '公式戦' ? { limit:0, reentry:false } : { limit:0, reentry:true };
+const SUB_LIMITS = [0, 1, 2, 3, 4, 5, 6];   // 交代できる「回数」（同時に何人代えても1回）
+const SUB_DEFAULT = kind => kind === '公式戦' ? { limit:0, reentry:false, htFree:true } : { limit:0, reentry:true, htFree:true };
 
 /* ---------- 登録メンバー ---------- */
 function regSet(){
@@ -67,8 +67,11 @@ function regClick(d){
 /* ---------- 交代枠・再入場 ---------- */
 const subRules = m => ({ ...SUB_DEFAULT(m?.kind), ...(m?.subs || {}) });
 const usSubs = m => evOf(m.id).filter(e => e.type === 'sub' && e.team === 'us');
-const subsUsed = m => usSubs(m).length;
-const subsLeft = m => { const r = subRules(m); return r.limit ? Math.max(0, r.limit - subsUsed(m)) : Infinity; };
+// 交代の回数：同時に確定した交代は1回。ハーフタイム（ピリオド開始前）の交代は、設定により数えない
+const subWindows = m => { const r = subRules(m); return new Set(usSubs(m).filter(e => !(r.htFree && e.ht)).map(e => e.win || e.id)); };
+const subsUsed = m => subWindows(m).size;
+const atBreak = m => !isStarted(m, state.timer.p);
+const subsLeft = m => { const r = subRules(m); if(!r.limit || (r.htFree && atBreak(m))) return Infinity; return Math.max(0, r.limit - subsUsed(m)); };
 const wentOffIds = m => new Set(usSubs(m).map(e => e.outId));
 // ベンチ：ok＝今入れる選手、blocked＝再入場できない選手
 function benchOf(m){
@@ -77,27 +80,30 @@ function benchOf(m){
   return { ok:all.filter(p => r.reentry || !gone.has(p.id)), blocked:all.filter(p => !r.reentry && gone.has(p.id)) };
 }
 function subInfoHTML(m, pending = 0){
-  const r = subRules(m), u = subsUsed(m) + pending, full = r.limit && u >= r.limit;
-  return `<span class="subinfo ${full ? 'full' : ''}">交代 <b class="num">${u}</b>${r.limit ? `/${r.limit}（残り${Math.max(0, r.limit - u)}）` : '（無制限）'}・再入場${r.reentry ? 'あり' : 'なし'}</span>`;
+  const r = subRules(m), free = r.htFree && atBreak(m), u = subsUsed(m) + (pending && !free ? 1 : 0), full = r.limit && u >= r.limit;
+  return `<span class="subinfo ${full && !free ? 'full' : ''}">交代 <b class="num">${u}</b>${r.limit ? `/${r.limit}回（残り${Math.max(0, r.limit - u)}回）` : '回（無制限）'}・再入場${r.reentry ? 'あり' : 'なし'}${free && r.limit ? '・今はハーフタイムなので数えません' : ''}</span>`;
 }
 function subRuleCtlHTML(m){
   const r = subRules(m);
   return `<div class="subctl">${subInfoHTML(m)}
-    <label>交代枠<select data-sublim>${SUB_LIMITS.map(n => `<option value="${n}" ${r.limit === n ? 'selected' : ''}>${n ? n + '人' : '無制限'}</option>`).join('')}</select></label>
-    <label class="checkrow dark"><input type="checkbox" data-subre ${r.reentry ? 'checked' : ''}>再入場あり</label></div>`;
+    <label>交代<select data-sublim>${SUB_LIMITS.map(n => `<option value="${n}" ${r.limit === n ? 'selected' : ''}>${n ? n + '回まで' : '回数は無制限'}</option>`).join('')}</select></label>
+    <label class="checkrow dark"><input type="checkbox" data-subre ${r.reentry ? 'checked' : ''}>再入場あり</label>
+    <label class="checkrow dark"><input type="checkbox" data-subht ${r.htFree ? 'checked' : ''}>ハーフタイムの交代は数えない</label></div>`;
 }
 function setSubRule(el){
   const m = cur(); if(!m) return false;
   if(el.matches('[data-sublim]')){ m.subs = { ...subRules(m), limit:+el.value }; }
   else if(el.matches('[data-subre]')){ m.subs = { ...subRules(m), reentry:el.checked }; }
+  else if(el.matches('[data-subht]')){ m.subs = { ...subRules(m), htFree:el.checked }; }
   else return false;
   save.matches(); return true;
 }
 // 試合作成フォームの交代ルール欄（練習試合・公式戦で別々に持つ）
 function subFormHTML(m, kind, pre){
   const r = m && m.kind === kind ? subRules(m) : SUB_DEFAULT(kind);
-  return `<label class="field">交代枠<select id="${pre}Lim">${SUB_LIMITS.map(n => `<option value="${n}" ${r.limit === n ? 'selected' : ''}>${n ? n + '人まで' : '無制限'}</option>`).join('')}</select></label>
-    <label class="checkrow dark"><input type="checkbox" id="${pre}Re" ${r.reentry ? 'checked' : ''}>一度下がった選手の再入場を認める</label>`;
+  return `<label class="field">交代の回数<select id="${pre}Lim">${SUB_LIMITS.map(n => `<option value="${n}" ${r.limit === n ? 'selected' : ''}>${n ? n + '回まで' : '無制限'}</option>`).join('')}</select></label>
+    <label class="checkrow dark"><input type="checkbox" id="${pre}Re" ${r.reentry ? 'checked' : ''}>一度下がった選手の再入場を認める</label>
+    <label class="checkrow dark"><input type="checkbox" id="${pre}Ht" ${r.htFree ? 'checked' : ''}>ハーフタイムの交代は回数に数えない</label>`;
 }
 
 /* ---------- 得点一覧（スコアをタップ） ---------- */

@@ -18,7 +18,7 @@ function viewTeams(){
       <button type="button" class="tedit" data-teamedit="${t.id}" aria-label="${esc(t.name)}を編集">✎</button></div>`;
   };
   return `<div class="teams">
-    <section class="card hero"><div class="kicker">SELECT <i>TEAM</i></div><div class="date">記録するチームを選んでください。名簿・試合・ユニフォームの色はチームごとに分かれています。</div></section>
+    <section class="card hero"><div class="herolock">${logoLockup(team()?.kits?.[1]?.a, team()?.kits?.[1]?.b)}</div><div class="kicker">SELECT <i>TEAM</i></div><div class="date">記録するチームを選んでください。名簿・試合・ユニフォームの色はチームごとに分かれています。</div></section>
     ${cats.map(c => `<section class="tcat"><div class="dayhead">${esc(c)}<small>${state.teams.filter(t => (t.category || 'その他') === c).length}チーム</small></div>
       <div class="tgrid">${state.teams.filter(t => (t.category || 'その他') === c).map(card).join('')}</div></section>`).join('')}
     <button type="button" class="tnew" data-teamnew>＋ 新しいチームを作る</button>

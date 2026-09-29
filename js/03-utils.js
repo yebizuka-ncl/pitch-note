@@ -69,6 +69,10 @@ function pkState(m, evs){
   return { us, th, a, b, na, nb, winner, next, nextNo: next ? (next === 'us' ? na : nb) + 1 : null };
 }
 
+/* ---------- ロゴ（KAMAGAKU MATCH LOG）。地の色と下の線は今日のユニの色（1st：エンジ×オレンジ／2nd：青×シルバー） ---------- */
+const logoMark = (a = '#8c1d2f', b = '#ff7a1a') => `<svg class="lmark" viewBox="24 24 464 464" aria-hidden="true"><rect x="24" y="24" width="464" height="464" rx="76" fill="${a}"/><rect x="80" y="103" width="352" height="16" fill="#fff"/><rect x="252" y="119" width="8" height="281" fill="#fff" opacity=".45"/><circle cx="256" cy="256" r="97" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="7"/><polygon points="256.0,168.0 275.8,228.8 339.7,228.8 288.0,266.4 307.7,327.2 256.0,289.6 204.3,327.2 224.0,266.4 172.3,228.8 236.2,228.8" fill="#fff"/><rect x="80" y="392" width="352" height="16" fill="${b}"/></svg>`;
+const logoLockup = (a, b) => `<span class="lockup">${logoMark(a, b)}<span class="lk-t"><small>KAMAGAKU</small><b>MATCH <i>LOG</i></b></span></span>`;
+
 let toastTimer;
 // undoId を渡すと「取り消す」ボタン付き（記録の直後にその場で戻せる）
 function toast(msg, undoId){ const t = $('#toast');
@@ -77,20 +81,16 @@ function toast(msg, undoId){ const t = $('#toast');
 function showStorageWarn(){ $('#storageWarn').hidden = false; }
 function flash(sel){ const el = $(sel); if(!el) return; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
 let fxTimer;
-function celebrate(name){
+function celebrate(name, title){
   const fx = $('#goalFx'); $('#goalFxName').textContent = name; $('#goalFxName').hidden = !name;
+  fx.querySelector('b').textContent = title || 'GOAL!!';
   fx.hidden = true; void fx.offsetWidth; fx.hidden = false;
   clearTimeout(fxTimer); fxTimer = setTimeout(() => fx.hidden = true, 1500);
 }
 // 記録中は画面が暗くならないようにする（対応していない環境では何もしない）
 let wakeLock = null;
-async function keepAwake(on){
-  try{
-    if(on && !wakeLock && navigator.wakeLock){ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => wakeLock = null); }
-    else if(!on && wakeLock){ await wakeLock.release(); wakeLock = null; }
-  }catch(e){ wakeLock = null; }
-}
-document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' && (state.timer.startedAt || state.timer.brk)) keepAwake(true); });
+// 記録中の試合があるあいだは、時計を止めていても消灯しない（くわしくは 18-review.js の syncAwake）
+function keepAwake(){ if(typeof syncAwake === 'function') syncAwake(); }
 
 function ensureLineup(){
   const ids = new Set(present().map(p => p.id));
@@ -130,8 +130,16 @@ function applyTheme(){
   set('--kit', colors.a); set('--kit-deep', hsl(h, sa, l * .55));
   set('--kit-hi', bright ? hsl(h, sa, Math.min(l, 38)) : hsl(h, Math.max(sa, 55), Math.max(l, 62)));
   set('--us-soft', bright ? hsl(h, sa, 92) : `hsl(${Math.round(h)} ${Math.round(sa)}% 60% / .2)`);
-  set('--accent', bright && bl > 70 ? hsl(bh, bs, 45) : colors.b); set('--vital', colors.b);
-  set('--accent-ink', bl > 60 ? '#12151b' : '#ffffff');
+  // デザインB：地とボタンは「チームの色」（1stユニ）でいつも同じ。今日のユニの色は自チームの部分だけ
+  const br = team()?.kits?.[1] || DEFAULT_KITS[1], [rh, rs, rl] = hexToHsl(br.a), [ch, cs, cl] = hexToHsl(br.b);
+  set('--brand', br.a); set('--brand-deep', hsl(rh, rs, rl * .55)); set('--brand-hi', hsl(rh, Math.max(rs, 50), Math.min(62, rl + 18)));
+  const copper = bright ? hsl(ch, Math.max(cs, 60), 40) : hsl(ch, Math.max(cs, 70), Math.max(cl, 64));
+  set('--copper', copper); set('--accent', copper); set('--accent-ink', bright ? '#ffffff' : '#2a0f00');
+  set('--kit-acc', colors.b); set('--vital', colors.b);
+  const tint = { '--bg':hsl(rh, 50, 4), '--bg-2':hsl(rh, 45, 7), '--surface':hsl(rh, 45, 10), '--surface-2':hsl(rh, 40, 15),
+    '--line':'rgba(255,170,120,.2)', '--ink':'#fbeee8', '--ink-2':'#d6b3a6', '--ink-3':'#a8857a',
+    '--sf-top':hsl(rh, 44, 14), '--sf-bot':hsl(rh, 54, 7), '--sf2-top':hsl(rh, 42, 17), '--sf2-bot':hsl(rh, 48, 10) };
+  Object.entries(tint).forEach(([k, v]) => bright ? root.style.removeProperty(k) : set(k, v));
   // 相手の色：自チームが青系ならオレンジ、それ以外はシアン
   const blue = h > 180 && h < 260;
   set('--opp', bright ? (blue ? '#c45f08' : '#08869a') : (blue ? '#ff8a1f' : '#26c6da'));
@@ -139,9 +147,12 @@ function applyTheme(){
   set('--opp-ink', bright ? '#ffffff' : (blue ? '#2a1300' : '#032a30'));
   root.classList.remove('kit2');
   root.classList.toggle('bright', bright);
+  const nl = $('#navLogo'); if(nl) nl.innerHTML = logoMark(colors.a, colors.b);
   $('#brightBtn').textContent = bright ? '🌙 通常モード' : '☀️ 屋外モード';
   const tc = $('#teamChip'); if(tc){ const t = team(); tc.hidden = state.ui.screen === 'teams';
-    tc.innerHTML = `<span class="tsw" style="background:linear-gradient(135deg,${t.kits[1].a} 0 60%,${t.kits[1].b} 60%)"></span>${esc(t.name)} ▾`; }
+    const kn = m ? (m.kit === 2 ? '2nd' : '1st') : null;
+    tc.innerHTML = `<span class="tsw" style="background:linear-gradient(135deg,${t.kits[1].a} 0 60%,${t.kits[1].b} 60%)"></span>${esc(t.name)} ▾`
+      + (kn ? ` <span class="kitshirt" title="今日のユニフォーム"><svg viewBox="0 0 40 36" aria-hidden="true"><path d="M13 2 L4 7 L0 16 L7 19 L9 14 L9 34 L31 34 L31 14 L33 19 L40 16 L36 7 L27 2 Q20 7 13 2 Z" fill="${colors.a}" stroke="#fff" stroke-width="1.6"/><path d="M4 7 L0 16 L7 19 L9 14 Z M36 7 L40 16 L33 19 L31 14 Z" fill="${colors.b}"/></svg>${kn}</span>` : ''); }
 }
 
 /* ---------- フォーメーション ---------- */
@@ -160,8 +171,8 @@ function autoArrange(){
   while(f.us.slots.length < 11) f.us.slots.push(null);
   save.fm();
 }
-function boardHTML({ m, usShape, usPlayers = [], themShape, interactive = false, slotAttr = 'fslot', sel = state.ui.fmSel, full = false }){
-  let us = usShape ? slotsOf(usShape, 'us') : [], th = themShape && !full ? slotsOf(themShape, 'them') : [];
+function boardHTML({ m, usShape, usPlayers = [], themShape, interactive = false, slotAttr = 'fslot', sel = state.ui.fmSel, full = false, usPos = null, themPos = null }){
+  let us = usShape ? movedSlots(usShape, 'us', usPos) : [], th = themShape && !full ? movedSlots(themShape, 'them', themPos) : [];
   if(full) us = us.map(s => ({ ...s, x:7 + (s.x - 4) * (90 / 44) }));   // 自チームだけをピッチ全体に広げて表示
   const tag = interactive ? 'button' : 'div';
   return `<div class="board"><div class="pitch">${pitchSVG()}

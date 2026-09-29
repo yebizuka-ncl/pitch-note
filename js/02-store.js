@@ -76,7 +76,7 @@ const save = {
   meta:()=>Store.write(GK.meta,state.meta), teams:()=>Store.write(GK.teams,state.teams),
 };
 const DEFAULT_KITS = { 1:{ a:'#8c1d2f', b:'#ff7a1a' }, 2:{ a:'#1d4fb0', b:'#c9d1dc' } };
-const DEFAULT_SETTINGS = { sound:true, lefty:false, drawSP:true };
+const DEFAULT_SETTINGS = { sound:true, lefty:false, drawSP:true, level:'normal' };
 function initState(){
   state.teams = Store.read(GK.teams, null);
   state.matches = Store.read(GK.matches, []);
@@ -117,7 +117,7 @@ function runSync(){
   const payload = { app:'pitch-note', schema:6, exportedAt:new Date().toISOString(),
     teams:state.teams, team:team(), roster:state.roster.map(({id,grade,num,name,pos,school,status}) => ({id,grade,num,name,pos,school,status})),
     matches:state.matches.filter(m => ids.has(m.id)), events:evs };
-  console.log('[ピッチノート] 同期データ(JSON)↓');
+  console.log('[MATCH LOG] 同期データ(JSON)↓');
   console.log(JSON.stringify(payload, null, 2));
   // await sendToGAS(payload)  ← 本番ではここで送信し、成功したときだけ下の synced=true を実行
   evs.forEach(e => e.synced = true);
