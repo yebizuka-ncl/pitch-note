@@ -465,12 +465,21 @@ function slimForSheet(o){
   if(JSON.stringify(c).length >= SHEET_MAX) Object.keys(c).forEach(k => { if(JSON.stringify(c[k] ?? '').length > 8000) c[k] = omit; });
   return c;
 }
+// PLAYER LOG 用の書き出しの版。上げると、終わった試合を次の同期で全部書き直す（ver.37：チーム名の取り違えを直したため 2）
+const PL_SENT_V = 2;
+// その試合のチームの名簿で、PLAYER LOG 用のまとめと場面を作る（別のチームを開いたまま同期しても正しいチーム名・選手になる）
+function playerLogRowsOfTeam(m){
+  const saved = state.roster, tm = state.teams.find(t => t.id === m.teamId) || team();
+  if(m.teamId && m.teamId !== state.teamId) state.roster = Store.read(`pn.roster.v6.${m.teamId}`, []);
+  try{ const x = playerLogRows(m); x.summary.team = tm.name; x.scenes.forEach(sc => sc.team = tm.name); return x; }
+  finally{ state.roster = saved; }
+}
 async function gasPush(){
   const evs = unsynced(), ids = new Set(evs.map(e => e.matchId));
   // 変更のあった試合と、まだ一度も送っていない試合（前の版で作った予定など）を送る。見本の試合は送らない
   state.matches.filter(m => (m.dirty || !m.pushedAt) && !m.sample).forEach(m => ids.add(m.id));
   // PLAYER LOG 用のまとめをまだ書き出していない「終わった試合」も送る（ver.34 以前に同期した試合を含む）
-  state.matches.filter(m => m.endedAt && !m.plSentAt && !m.sample).forEach(m => ids.add(m.id));
+  state.matches.filter(m => m.endedAt && m.plSentV !== PL_SENT_V && !m.sample).forEach(m => ids.add(m.id));
   const matches = state.matches.filter(m => ids.has(m.id) && !m.sample).map(m => { const ev = evOf(m.id), pk = pkState(m, ev);
     return slimForSheet({ ...m, teamName:(state.teams.find(t => t.id === m.teamId) || {}).name, scoreUs:goalsOf(ev,'us'), scoreThem:goalsOf(ev,'them'), pk:pk.na + pk.nb ? `${pk.a}-${pk.b}` : '',
       recordersText:(m.recorders || []).map(recorderLabel).join('、'),
@@ -478,12 +487,12 @@ async function gasPush(){
         ...[['good','良'],['issue','課題'],['next','次']].filter(([k]) => m.review?.[k]).map(([k, l]) => `[${l}]${m.review[k].replace(/\n/g, ' ')}`)].join(' / ') }); });
   const events = evs.map(e => { const m = match(e.matchId); return slimForSheet({ ...e, text:m ? evText(e, m) : '' }); });
   // PLAYER LOG 用：終わった試合（と削除した試合）のまとめと、選手ごとの場面
-  const plMs = state.matches.filter(m => ids.has(m.id) && !m.sample && (m.endedAt || m.deleted)), pl = plMs.map(playerLogRows);
+  const plMs = state.matches.filter(m => ids.has(m.id) && !m.sample && (m.endedAt || m.deleted)), pl = plMs.map(playerLogRowsOfTeam);
   const r = await gasCall('push', { team:team(), roster:state.roster.filter(p => !isSampleP(p)), matches, events,
     summaries:pl.map(x => x.summary), scenes:pl.flatMap(x => x.scenes), sceneMatches:plMs.map(m => m.id) });   // 見本の選手はシートに送らない
   evs.forEach(e => e.synced = true); state.matches.forEach(m => { if(ids.has(m.id)) m.pushedAt = new Date().toISOString(); delete m.dirty; });
   // 新しい Apps Script（ver.36〜）だけが summaries の件数を返す。返ってきたときだけ「書き出し済み」にする（古い Apps Script なら次回また送る）
-  if(typeof r?.summaries === 'number'){ const at = new Date().toISOString(); plMs.forEach(m => m.plSentAt = at); }
+  if(typeof r?.summaries === 'number'){ const at = new Date().toISOString(); plMs.forEach(m => { m.plSentAt = at; m.plSentV = PL_SENT_V; }); }
   state.matches = state.matches.filter(m => !m.deleted); save.matches();   // 削除した試合は、シートに「削除」を送り終えたら端末から消す
   state.events = state.events.filter(e => !(e.deleted && e.synced));
   save.events(); state.meta.lastSync = new Date().toISOString(); save.meta();
