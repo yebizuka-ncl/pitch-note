@@ -1,6 +1,6 @@
 {
-  "name": "ピッチノート",
-  "short_name": "ピッチノート",
+  "name": "KAMAGAKU MATCH LOG",
+  "short_name": "MATCH LOG",
   "description": "中学校サッカー部・選抜チームのための試合記録と分析",
   "lang": "ja",
   "start_url": "./",
