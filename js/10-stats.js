@@ -62,7 +62,7 @@ function goalDesc(g){
   const fin = [lbl(FEET, x.foot), lbl(TOUCH, x.touch)].filter(Boolean).join('・'); if(fin) parts.push(fin);
   if(x.assistId){ const p = player(x.assistId); if(p) parts.push(`アシスト #${p.num} ${family(p.name)}`); }
   if(x.oppNum) parts.push(`相手の得点者 #${x.oppNum}`);
-  return parts.join(' ／ ');
+  return parts.filter(Boolean).join(' ／ ');
 }
 // 出場時間：各ピリオドのキックオフ時のメンバー＋交代から計算（給水で時計を止めた時間は含まない）
 function playSeconds(m, periodIdxs){
