@@ -438,7 +438,10 @@ async function gasPull(){
     state.roster = state.roster.filter(p => !isSampleP(p) || used.has(p.id)); ensureLineup(); }
   save.roster();
   (d.schedule || []).filter(s => s.team === tm.name || s.teamId === tm.id).forEach(s => {
-    if(state.matches.some(m => m.id === s.id || (m.srcId && m.srcId === s.id)) || (state.meta.deletedSrc || []).includes(s.id)) return;
+    if(state.matches.some(m => m.id === s.id || (m.srcId && m.srcId === s.id))) return;
+    // 同じ日・同じ相手の試合がすでにiPadにあれば（iPadで先に作った予定など）、二重にせずその試合とひも付ける
+    const same = state.matches.find(m => !m.deleted && m.teamId === tm.id && m.date === s.date && m.opponent === (s.opponent || '相手'));
+    if(same){ same.srcId = s.id; return; }
     const official = s.kind === '公式戦', min = +s.min || 30, cnt = +s.count || 2;
     const periods = official ? [{ label:'前半', short:'1ST', min, kind:'reg' }, { label:'後半', short:'2ND', min, kind:'reg' }]
       : Array.from({ length:cnt }, (_, i) => ({ label:`${i+1}本目`, short:`${i+1}本`, min, kind:'reg' }));

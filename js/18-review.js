@@ -472,13 +472,13 @@ function deleteMatch(id){
       ${sent ? '<p style="font-size:13px">この試合はスプレッドシートに同期済みです。次に「☁️ 同期」したとき、シートの行に「削除」の印が付きます（行そのものは残ります）。</p>' : ''}`,
     actions:[{ label:'キャンセル' }, { label:'削除する', kind:'danger', onClick:() => {
       if(state.current === id){ foldTimer(); state.current = null; save.current(); state.timer = { p:0, el:{}, startedAt:null, brk:null }; save.timer(); }
-      if(m.srcId){ state.meta.deletedSrc = [...new Set([...(state.meta.deletedSrc || []), m.srcId])]; save.meta(); }   // 予定シートから再び読み込まない
+      const fromSheet = !!m.srcId;   // 予定シートから来た試合は、シートの行が残っていると次の同期でまた予定として入る
       if(sent){ m.deleted = true; m.dirty = true; ev.forEach(e => { e.deleted = true; e.synced = false; }); }
       else { state.matches = state.matches.filter(x => x.id !== id); state.events = state.events.filter(e => e.matchId !== id); }
       save.matches(); save.events();
       if(state.ui.postMatch === id) state.ui.postMatch = null;
       if(state.ui.dataMatch === id) state.ui.dataMatch = null;
-      state.ui.screen = 'home'; render(); toast(sent ? '試合を削除しました（次の同期でシートにも反映します）' : '試合を削除しました');
+      state.ui.screen = 'home'; render(); toast((sent ? '試合を削除しました（次の同期でシートにも反映します）' : '試合を削除しました') + (fromSheet ? '。「予定」シートの行も消してください' : ''));
     } }] });
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-delmatch]'); if(b && !e.target.closest('#sheet')) deleteMatch(b.dataset.delmatch); });

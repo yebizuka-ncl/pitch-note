@@ -83,6 +83,7 @@ function initState(){
   state.events = Store.read(GK.events, []);
   state.meta = Store.read(GK.meta, { lastSync:null, ourName:'自チーム', kit:1, bright:false });
   state.meta.settings = { ...DEFAULT_SETTINGS, ...(state.meta.settings || {}) };
+  delete state.meta.deletedSrc;   // 以前の「予定を読み込まない」一覧は使わない（シートにある予定は必ず読み込む）
   // 初回：これまでのデータを「サッカー部」チームに引き継ぐ
   if(!state.teams){
     const t = { id:'t' + Date.now().toString(36), name:'サッカー部', short:state.meta.ourName || '自チーム', category:'中学 部活', kits:JSON.parse(JSON.stringify(DEFAULT_KITS)), lastKit:state.meta.kit || 1 };
