@@ -334,5 +334,21 @@ Store.boot().then(() => {
 });
 // PWA：GitHub Pages などで公開したときだけ有効（オフラインでも起動できるようにする）
 if('serviceWorker' in navigator && location.protocol === 'https:' && !/claude|claudeusercontent/.test(location.hostname)){
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  const hadSW = !!navigator.serviceWorker.controller;   // 初めて開いたとき（前の版がない）は知らせない
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    reg.update().catch(() => {});
+    // アプリに戻ってきたときにも、新しい版がないか確かめる
+    document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
+  navigator.serviceWorker.addEventListener('message', e => { if(e.data?.type === 'sw-ready' && hadSW && e.data.version !== APP_VERSION) showUpdateBar(e.data.version); });
 }
+// 新しい版が届いたら画面の上に帯を出す（押すと読み込み直す。記録はiPadに保存済みなので消えない）
+function showUpdateBar(v){
+  let bar = $('#updBar'); if(!bar){ bar = document.createElement('div'); bar.id = 'updBar'; bar.className = 'updbar'; document.body.appendChild(bar); }
+  bar.innerHTML = `<span>✨ 新しい版（ver.${esc(String(v).replace('pn-v', ''))}）が届きました</span><button type="button" data-updnow>更新する</button><button type="button" class="x" data-updlater aria-label="あとで">あとで</button>`;
+  bar.hidden = false;
+}
+document.addEventListener('click', e => {
+  if(e.target.closest('[data-updnow]')){ Store.flush(); setTimeout(() => location.reload(), 150); }
+  if(e.target.closest('[data-updlater]')){ $('#updBar').hidden = true; }
+});

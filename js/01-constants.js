@@ -1,6 +1,6 @@
 "use strict";
 // アプリの版（sw.js の VERSION と同じ番号にそろえる）
-const APP_VERSION = 'pn-v30';
+const APP_VERSION = 'pn-v31';
 const APP_VER_LABEL = 'ver.' + APP_VERSION.replace('pn-v', '');
 /* =========================================================
    1. 定数（ピッチ実寸と戦術モデル）
