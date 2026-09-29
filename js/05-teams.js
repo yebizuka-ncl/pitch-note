@@ -5,7 +5,7 @@
 function viewTeams(){
   const cats = [...new Set(state.teams.map(t => t.category || 'その他'))];
   const card = t => {
-    const n = Store.read(`pn.roster.v6.${t.id}`, []).length, ms = state.matches.filter(m => m.teamId === t.id);
+    const n = Store.read(`pn.roster.v6.${t.id}`, []).length, ms = state.matches.filter(m => m.teamId === t.id && !m.deleted);
     const live = Store.read(`pn.current.v6.${t.id}`, null) && ms.some(m => m.id === Store.read(`pn.current.v6.${t.id}`, null));
     const last = ms.map(m => m.date).sort().pop();
     return `<div class="tcard">

@@ -228,6 +228,8 @@ function viewPost(){
       <div class="row" style="justify-content:flex-start"><button class="btn" data-classroom type="button">📮 振り返りを配信（Googleドライブ連携が必要）</button>
         <button class="btn" data-openmatch="${m.id}" type="button">📊 データ分析を見る</button></div>
     </section>
+    <section class="card panel delzone"><div class="hd"><h3>🗑 この試合を削除</h3><span class="muted" style="font-size:12px">試しに記録した試合などを消します。元に戻せません</span></div>
+      <div class="row" style="justify-content:flex-start"><button class="btn danger" data-delmatch="${m.id}" type="button">この試合を削除する</button></div></section>
   </div>`;
 }
 // 試合レポート（A4横 1枚）。画面・PDF・画像で同じものを使う
@@ -402,6 +404,7 @@ function gasSettingsHTML(){
     <div class="row" style="justify-content:flex-start"><button class="btn small" data-gassave type="button">保存</button><button class="btn small" data-gastest type="button">接続テスト</button>
       ${g.lastPull ? `<span class="muted" style="font-size:12px">最終読み込み：${esc(g.lastPull.slice(0,16).replace('T',' '))}</span>` : ''}</div>`;
 }
+const isSampleP = p => DEFAULT_ROSTER.some(d => d.id === p.id && d.name === p.name);
 async function gasCall(action, payload){
   const g = state.meta.gas || {}; if(!g.url) throw new Error('nourl');
   const res = await fetch(`${g.url}?action=${action}&key=${encodeURIComponent(g.key || '')}`, payload ? { method:'POST', body:JSON.stringify({ key:g.key, action, ...payload }) } : {});
@@ -419,9 +422,12 @@ async function gasPull(){
     const st = p.status === '退部' || p.status === '卒業' ? 'retired' : null;
     if(ex) Object.assign(ex, { num:+p.num || ex.num, name:p.name, grade:+p.grade || ex.grade, pos:p.pos || ex.pos, school:p.school || ex.school, ...(st ? { status:st } : {}) });
     else state.roster.push({ id:p.id || 'p' + uid(), num:+p.num, name:p.name, grade:+p.grade || 1, pos:p.pos || '', school:p.school || '', status:st || 'present' }); });
+  // シートから選手を読み込めたら、最初から入っている見本の選手（試合の記録に出てこないもの）は名簿から外す
+  if(players.length){ const used = new Set(state.events.flatMap(e => [e.playerId, e.inId, e.outId, e.goal?.assistId, ...(e.lineup || [])]).filter(Boolean));
+    state.roster = state.roster.filter(p => !isSampleP(p) || used.has(p.id)); ensureLineup(); }
   save.roster();
   (d.schedule || []).filter(s => s.team === tm.name || s.teamId === tm.id).forEach(s => {
-    if(state.matches.some(m => m.id === s.id || (m.srcId && m.srcId === s.id))) return;
+    if(state.matches.some(m => m.id === s.id || (m.srcId && m.srcId === s.id)) || (state.meta.deletedSrc || []).includes(s.id)) return;
     const official = s.kind === '公式戦', min = +s.min || 30, cnt = +s.count || 2;
     const periods = official ? [{ label:'前半', short:'1ST', min, kind:'reg' }, { label:'後半', short:'2ND', min, kind:'reg' }]
       : Array.from({ length:cnt }, (_, i) => ({ label:`${i+1}本目`, short:`${i+1}本`, min, kind:'reg' }));
@@ -443,8 +449,9 @@ async function gasPush(){
       pointsText:[...(m.points?.pre || []).map(x => `[前]${x.eval || ''}${x.text}`), ...(m.points?.ht || []).map(x => `[HT]${x.eval || ''}${x.text}`),
         ...[['good','良'],['issue','課題'],['next','次']].filter(([k]) => m.review?.[k]).map(([k, l]) => `[${l}]${m.review[k].replace(/\n/g, ' ')}`)].join(' / ') }; });
   const events = evs.map(e => { const m = match(e.matchId); return { ...e, text:m ? evText(e, m) : '' }; });
-  const r = await gasCall('push', { team:team(), roster:state.roster, matches, events });
-  evs.forEach(e => e.synced = true); state.matches.forEach(m => delete m.dirty); save.matches();
+  const r = await gasCall('push', { team:team(), roster:state.roster.filter(p => !isSampleP(p)), matches, events });   // 見本の選手はシートに送らない
+  evs.forEach(e => e.synced = true); state.matches.forEach(m => { if(ids.has(m.id)) m.pushedAt = new Date().toISOString(); delete m.dirty; });
+  state.matches = state.matches.filter(m => !m.deleted); save.matches();   // 削除した試合は、シートに「削除」を送り終えたら端末から消す
   state.events = state.events.filter(e => !(e.deleted && e.synced));
   save.events(); state.meta.lastSync = new Date().toISOString(); save.meta();
   return { events:evs.length, matches:matches.length, ...r };

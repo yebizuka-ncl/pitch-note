@@ -105,7 +105,7 @@ function loadTeam(id){
   state.ui.dataDate = null; state.ui.dataMatch = null; state.ui.pos = null; state.ui.setupKit = null;
 }
 const team = () => state.teams.find(t => t.id === state.teamId) || state.teams[0];
-const teamMatches = () => state.matches.filter(m => m.teamId === state.teamId);
+const teamMatches = () => state.matches.filter(m => m.teamId === state.teamId && !m.deleted);   // 削除した試合（同期待ち）は出さない
 const teamKits = () => ({ 1:{ label:'1st', ...team().kits[1] }, 2:{ label:'2nd', ...team().kits[2] } });
 const kitOf = m => m?.kitColors || team().kits[m?.kit || 1];
 
@@ -121,6 +121,7 @@ function runSync(){
   console.log(JSON.stringify(payload, null, 2));
   // await sendToGAS(payload)  ← 本番ではここで送信し、成功したときだけ下の synced=true を実行
   evs.forEach(e => e.synced = true);
+  state.matches = state.matches.filter(m => !m.deleted); save.matches();
   state.events = state.events.filter(e => !(e.deleted && e.synced));   // 送り終えた削除の印は端末から消す
   save.events();
   state.meta.lastSync = payload.exportedAt; save.meta();

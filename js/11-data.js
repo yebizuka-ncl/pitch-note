@@ -63,6 +63,7 @@ function viewData(){
         ${dayMs.map(m => `<option value="${m.id}" ${single && single.id===m.id && state.ui.dataMatch !== 'day' ?'selected':''}>${mode === 'day' ? '' : esc(m.date.slice(5).replace('-','/')) + ' '}vs ${esc(m.opponent)}（${esc(scoreText(m))}）${m.kind === '紅白戦' ? '・紅白戦（集計外）' : ''}${m.sample?' サンプル':''}</option>`).join('')}
       </select>
       ${single ? `<div class="seg2" role="group" aria-label="集計範囲"><button type="button" data-dper="all" aria-pressed="${per==null}">全体</button>${single.periods.map((p, i) => p.kind === 'pk' ? '' : `<button type="button" data-dper="${i}" aria-pressed="${per===i}">${esc(p.label)}</button>`).join('')}</div>` : ''}
+      ${single && !single.sample ? `<button class="btn small" data-delmatch="${single.id}" type="button">🗑 この試合を削除</button>` : ''}
       ${hasSample ? '<button class="btn small" data-clearsample type="button">サンプルを削除</button>' : '<button class="btn small" data-sample type="button">サンプルの1日を追加</button>'}
       <button class="ai-btn" data-ai type="button">🤖 Gemini APIでAI分析レポートを生成</button>
     </div>

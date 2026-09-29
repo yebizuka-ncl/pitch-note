@@ -459,3 +459,26 @@ document.addEventListener('pointerup', e => {
 });
 document.addEventListener('pointercancel', () => { if(fpDrag){ fpDrag = null; render(); } });
 document.addEventListener('click', e => { if(Date.now() - fpSuppress < 400 && e.target.closest('.fp[data-bp]')){ e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+
+/* ================= 試合の削除（記録した試合も） =================
+   まだ同期していない試合は、その場で端末から消す。
+   同期済みの試合は「削除」の印を付けて隠し、次の同期でシートに「削除」を書いてから端末から消す */
+function deleteMatch(id){
+  const m = match(id); if(!m) return;
+  const ev = state.events.filter(e => e.matchId === id), sent = !!m.pushedAt || ev.some(e => e.synced);
+  openModal({ title:'この試合を削除しますか？', size:'wide',
+    body:`<p><b>${esc(dateJP(m.date))} vs ${esc(m.opponent)}（${esc(scoreText(m))}）</b></p>
+      <p style="font-size:13px">試合と、その中の記録 ${ev.filter(e => !e.deleted).length}件がすべて消えます。元に戻せません。</p>
+      ${sent ? '<p style="font-size:13px">この試合はスプレッドシートに同期済みです。次に「☁️ 同期」したとき、シートの行に「削除」の印が付きます（行そのものは残ります）。</p>' : ''}`,
+    actions:[{ label:'キャンセル' }, { label:'削除する', kind:'danger', onClick:() => {
+      if(state.current === id){ foldTimer(); state.current = null; save.current(); state.timer = { p:0, el:{}, startedAt:null, brk:null }; save.timer(); }
+      if(m.srcId){ state.meta.deletedSrc = [...new Set([...(state.meta.deletedSrc || []), m.srcId])]; save.meta(); }   // 予定シートから再び読み込まない
+      if(sent){ m.deleted = true; m.dirty = true; ev.forEach(e => { e.deleted = true; e.synced = false; }); }
+      else { state.matches = state.matches.filter(x => x.id !== id); state.events = state.events.filter(e => e.matchId !== id); }
+      save.matches(); save.events();
+      if(state.ui.postMatch === id) state.ui.postMatch = null;
+      if(state.ui.dataMatch === id) state.ui.dataMatch = null;
+      state.ui.screen = 'home'; render(); toast(sent ? '試合を削除しました（次の同期でシートにも反映します）' : '試合を削除しました');
+    } }] });
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-delmatch]'); if(b && !e.target.closest('#sheet')) deleteMatch(b.dataset.delmatch); });
