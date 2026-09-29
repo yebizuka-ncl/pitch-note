@@ -129,6 +129,15 @@ $('#sheet').addEventListener('click', e => {
   toast(`記録の量：${LEVELS.find(l => l.id === b.dataset.setlevel).label}`); render();
 });
 
+/* ---------- スタメン設定で相手の色を選ぶ ---------- */
+$('#sheet').addEventListener('click', e => {
+  const b = e.target.closest('[data-stopp]'); if(!b) return;
+  const m = cur(), f = state.ui.flow; if(!m) return;
+  m.oppColor = b.dataset.stopp || null; m.dirty = true; rememberOpp(m.opponent, m.oppColor);
+  save.matches(); applyTheme();
+  if(f?.kind === 'starters') starterSheet(f.then); render();
+  toast(m.oppColor ? `相手の色を「${(OPP_COLORS.find(o => o.c === m.oppColor) || {}).label || ''}」にしました` : '相手の色を「自動」にしました');
+});
 /* ---------- スタメン設定でユニフォームを選ぶ ---------- */
 $('#sheet').addEventListener('click', e => {
   const b = e.target.closest('[data-stkit]'); if(!b) return;

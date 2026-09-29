@@ -535,7 +535,7 @@ function teamDataOf(m){
   const goals = goalsAll.map(g => ({ tm:g.team, p:pLabel(m, g.period), c:clockMark(g.clock),
     who:g.type === 'og' ? 'OG' : g.team === 'us' ? (g.num ? `#${g.num} ${g.name}` : player(g.playerId) ? `#${player(g.playerId).num} ${player(g.playerId).name}` : '') : (g.goal?.oppNum ? `相手#${g.goal.oppNum}` : ''),
     pk:g.pk ? 1 : 0, ctx:goalContext(g), d:g.type === 'og' ? '' : goalDesc(g) }));
-  return { v:1, us:m.ourName || team().short || '自チーム', cmp, shots, wins, per, tb, ft:bd('footRows'), ck:bd('ckRows'), fk:bd('fkRows'),
+  return { v:1, us:m.ourName || team().short || '自チーム', oc:oppColorOf(m) || '', cmp, shots, wins, per, tb, ft:bd('footRows'), ck:bd('ckRows'), fk:bd('fkRows'),
     ca:{ total:cc.total, tagged:cc.tagged, rows:cc.rows.map(r => ({ l:r.label, n:r.n })) }, ga, goals, hints:dataHints(m) };
 }
 // セルの上限（50,000字）をこえないように、大きすぎるときは位置の点を省く

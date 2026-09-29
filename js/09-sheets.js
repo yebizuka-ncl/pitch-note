@@ -32,6 +32,7 @@ function starterSheet(then){
     openSheet(`<h2>👥 ${esc(per.label)}のスタメン設定</h2>${steps}
       <div class="stkitrow"><span class="q">今日のユニフォーム</span>
         <div class="kitpick" role="group" aria-label="今日のユニフォーム">${[1,2].map(n => `<button type="button" data-stkit="${n}" aria-pressed="${mk===n}"><span class="sw" style="background:linear-gradient(135deg,${KITS[n].a} 0 62%,${KITS[n].b} 62%)"></span><span><span class="disp" style="font-size:20px">${KITS[n].label}</span> ユニフォーム</span></button>`).join('')}</div></div>
+      <div class="stkitrow"><span class="q">相手の色</span><div style="flex:1;min-width:320px">${oppPickHTML(oppColorOf(m), KITS[mk].a, 'data-stopp')}</div></div>
       <div class="st1">
         <div class="fmgroups">
           ${FM_GROUPS.map(([g, list]) => `<div class="g"><span>${g}</span><div class="chips fmc">${list.map(k => `<button type="button" data-stshape="${k}" aria-pressed="${f.shape===k}">${k}</button>`).join('')}</div></div>`).join('')}

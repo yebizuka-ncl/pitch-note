@@ -119,6 +119,34 @@ function hexToHsl(h){ h = h.replace('#',''); const r = parseInt(h.substr(0,2),16
     hh = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh *= 60; }
   return [hh, ss * 100, l * 100]; }
 const hsl = (h, s2, l) => `hsl(${Math.round(h)} ${Math.round(s2)}% ${Math.round(Math.max(0, Math.min(100, l)))}%)`;
+// 相手の色を画面で見やすくする（暗い画面では黒・紺を明るめに、屋外モードでは白・黄を濃いめに）
+function oppShow(hex, bright){
+  const [h, sa, l] = hexToHsl(hex);
+  const L = bright ? Math.min(l, sa < 15 ? 45 : 44) : Math.max(l, sa < 15 ? 62 : 56);
+  const c = hsl(h, sa, L), lum = L / 100;
+  return { c, soft:`hsl(${Math.round(h)} ${Math.round(sa)}% ${Math.round(L)}% / .2)`, ink:lum > .6 ? '#141414' : '#ffffff' };
+}
+// 相手の色が自チームのユニフォームと似ているか（色みと明るさで判定）
+function oppClash(kitHex, oppHex){
+  if(!kitHex || !oppHex) return false;
+  const [h1, s1, l1] = hexToHsl(kitHex), [h2, s2, l2] = hexToHsl(oppHex);
+  if(s1 < 18 || s2 < 18) return s1 < 18 && s2 < 18 && Math.abs(l1 - l2) < 30;
+  const dh = Math.min(Math.abs(h1 - h2), 360 - Math.abs(h1 - h2));
+  return dh < 28 && Math.abs(l1 - l2) < 30;
+}
+// 相手の色の選択（試合を作る画面・スタメン設定で共通）
+function oppPickHTML(sel, kitHex, attr){
+  const clash = oppClash(kitHex, sel);
+  return `<div class="oppick" role="group" aria-label="相手の色">
+    <button type="button" ${attr}="" aria-pressed="${!sel}" title="自動"><span class="osw auto">自動</span></button>
+    ${OPP_COLORS.map(o => `<button type="button" ${attr}="${o.c}" aria-pressed="${sel === o.c}" title="${o.label}"><span class="osw" style="background:${o.c}"></span><small>${o.label}</small></button>`).join('')}
+  </div>${clash ? '<p class="oppwarn">⚠️ 自チームのユニフォームと似た色です。記録の画面で見分けにくくなります（そのままでも使えます）</p>' : ''}`;
+}
+// 試合の相手の色。「予定」シートから来た試合など、まだ決めていない試合は、前にその相手で選んだ色（null＝自動を選んだ）
+const oppColorOf = m => m.oppColor !== undefined ? m.oppColor : rememberedOpp(m.opponent);
+const rememberedOpp = name => (team()?.oppColors || {})[String(name || '').trim()] || null;
+function rememberOpp(name, c){ const t = team(), n = String(name || '').trim(); if(!t || !n || n === '相手') return;
+  t.oppColors ||= {}; if(c) t.oppColors[n] = c; else delete t.oppColors[n]; save.teams(); }
 function applyTheme(){
   let kit = null, m = null;
   if(state.ui.screen === 'data'){ const ms = dataMatches(); if(ms.length === 1) m = ms[0]; }
@@ -140,11 +168,13 @@ function applyTheme(){
     '--line':'rgba(255,170,120,.2)', '--ink':'#fbeee8', '--ink-2':'#d6b3a6', '--ink-3':'#a8857a',
     '--sf-top':hsl(rh, 44, 14), '--sf-bot':hsl(rh, 54, 7), '--sf2-top':hsl(rh, 42, 17), '--sf2-bot':hsl(rh, 48, 10) };
   Object.entries(tint).forEach(([k, v]) => bright ? root.style.removeProperty(k) : set(k, v));
-  // 相手の色：自チームが青系ならオレンジ、それ以外はシアン
-  const blue = h > 180 && h < 260;
-  set('--opp', bright ? (blue ? '#c45f08' : '#08869a') : (blue ? '#ff8a1f' : '#26c6da'));
-  set('--opp-soft', blue ? 'rgba(255,138,31,.18)' : 'rgba(38,198,218,.18)');
-  set('--opp-ink', bright ? '#ffffff' : (blue ? '#2a1300' : '#032a30'));
+  // 相手の色：試合で選んだ色（選んでいなければ、自チームが青系ならオレンジ、それ以外はシアン）
+  const oc = m ? oppColorOf(m) : state.ui.setupOpp;
+  if(oc){ const o = oppShow(oc, bright); set('--opp', o.c); set('--opp-soft', o.soft); set('--opp-ink', o.ink); }
+  else { const blue = h > 180 && h < 260;
+    set('--opp', bright ? (blue ? '#c45f08' : '#08869a') : (blue ? '#ff8a1f' : '#26c6da'));
+    set('--opp-soft', blue ? 'rgba(255,138,31,.18)' : 'rgba(38,198,218,.18)');
+    set('--opp-ink', bright ? '#ffffff' : (blue ? '#2a1300' : '#032a30')); }
   root.classList.remove('kit2');
   root.classList.toggle('bright', bright);
   const nl = $('#navLogo'); if(nl) nl.innerHTML = logoMark(colors.a, colors.b);

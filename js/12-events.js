@@ -142,7 +142,8 @@ $('#sheet').addEventListener('click', e => {
   if(d.goaledit){ openGoal(d.goaledit); return; }
   if(d.markedit){ openMark(d.markedit); return; }
   if('backup' in d){ exportBackup(); return; }
-  if(d.kitpick){ state.ui.setupKit = +d.kitpick; applyTheme(); $('#sheet').querySelectorAll('[data-kitpick]').forEach(x => x.setAttribute('aria-pressed', x.dataset.kitpick === d.kitpick)); return; }
+  if(d.kitpick){ state.ui.setupKit = +d.kitpick; applyTheme(); $('#sheet').querySelectorAll('[data-kitpick]').forEach(x => x.setAttribute('aria-pressed', x.dataset.kitpick === d.kitpick)); refreshOppPick(); return; }
+  if(d.oppc !== undefined){ state.ui.setupOpp = d.oppc || null; refreshOppPick(); return; }
   if(d.recw !== undefined){ recWheelClick(b); return; }
   if(d.msave){ saveMatchForm(d.msave); return; }
   if('mdelplan' in d){ const id = f.id, pm = match(id); if(pm?.srcId) setTimeout(() => toast('スプレッドシートの「予定」シートの行も消してください（残っていると次の同期でまた入ります）'), 2800);
@@ -347,3 +348,5 @@ document.addEventListener('click', e => {
   if(e.target.closest('[data-updnow]')){ Store.flush(); setTimeout(() => location.reload(), 150); }
   if(e.target.closest('[data-updlater]')){ $('#updBar').hidden = true; }
 });
+// 対戦相手の名前を入れたら、前にその相手で選んだ色を出す（色をまだ触っていないときだけ）
+$('#sheet').addEventListener('input', e => { if(e.target.id === 'mOpp' && state.ui.setupOpp === undefined && !state.ui.flow?.id) refreshOppPick(); });

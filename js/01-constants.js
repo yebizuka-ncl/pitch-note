@@ -1,6 +1,6 @@
 "use strict";
 // アプリの版（sw.js の VERSION と同じ番号にそろえる）
-const APP_VERSION = 'pn-v39';
+const APP_VERSION = 'pn-v40';
 const APP_VER_LABEL = 'ver.' + APP_VERSION.replace('pn-v', '');
 /* =========================================================
    1. 定数（ピッチ実寸と戦術モデル）
@@ -117,4 +117,9 @@ const DEFAULT_ROSTER_ = [
   { id:'p13', grade:1, num:21, name:'木村 悠斗', pos:'GK' },
 ].map(p => ({ ...p, status:'present' }));
 const DEFAULT_ROSTER = DEFAULT_ROSTER_;
-
+// 相手チームの色（ユニフォームの色）。null＝自動（自チームが青系ならオレンジ、それ以外は水色）
+const OPP_COLORS = [
+  { c:'#d32f2f', label:'赤' }, { c:'#8c1d2f', label:'エンジ' }, { c:'#ec407a', label:'ピンク' }, { c:'#fb8c00', label:'オレンジ' },
+  { c:'#fdd835', label:'黄' }, { c:'#2e7d32', label:'緑' }, { c:'#29b6f6', label:'水色' }, { c:'#1e5bd8', label:'青' },
+  { c:'#1a2a6c', label:'紺' }, { c:'#7b1fa2', label:'紫' }, { c:'#ffffff', label:'白' }, { c:'#9e9e9e', label:'グレー' }, { c:'#212121', label:'黒' },
+];

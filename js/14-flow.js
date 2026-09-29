@@ -92,10 +92,23 @@ function matchFormHTML(m){
     <div class="kitpick" role="group" aria-label="今日のユニフォーム">
       ${[1,2].map(n => `<button type="button" data-kitpick="${n}" aria-pressed="${k===n}"><span class="sw" style="background:linear-gradient(135deg,${KITS[n].a} 0 62%,${KITS[n].b} 62%)"></span><span><span class="disp" style="font-size:20px">${KITS[n].label}</span> ユニフォーム</span></button>`).join('')}
     </div>
+    <div class="field" style="grid-column:1/-1">相手の色（ユニフォーム）<span class="muted" style="font-size:12px">　記録の画面・データで相手を表す色。対戦相手ごとに覚えます</span>
+      <div id="oppPickWrap">${oppPickHTML(formOpp(m), KITS[k].a, 'data-oppc')}</div></div>
   </div>`;
+}
+// 試合を作る画面で今選ばれている相手の色（触っていなければ、その試合の色か、前にその相手で選んだ色）
+function formOpp(m){
+  if(state.ui.setupOpp !== undefined) return state.ui.setupOpp;
+  return m ? (m.oppColor || null) : rememberedOpp($('#mOpp')?.value);
+}
+function refreshOppPick(){
+  const w = $('#oppPickWrap'); if(!w) return;
+  const f = state.ui.flow, m = f?.id ? match(f.id) : null, k = state.ui.setupKit || m?.kit || team().lastKit || 1;
+  w.innerHTML = oppPickHTML(formOpp(m), teamKits()[k].a, 'data-oppc');
 }
 function matchSheet(id){
   const m = id ? match(id) : null;
+  state.ui.setupOpp = undefined;
   state.ui.flow = { kind:'match', id };
   state.ui.recSel = (m?.recorders || []).slice();
   openSheet(`<h2>${m ? '試合の予定を編集' : '試合を作る'}</h2>${matchFormHTML(m)}
@@ -113,6 +126,8 @@ function readMatchForm(base){
   Object.assign(m, { date:$('#mDate').value || today(), kind, opponent:$('#mOpp').value.trim() || '相手', ourName:$('#mOur').value.trim() || team().short || '自チーム',
     tournament:$('#mTour').value.trim() || (kind === '練習試合' ? '' : ''), kit, kitColors:{ ...team().kits[kit] },
     recorders:(state.ui.recSel || []).filter(Boolean).slice(0, 3) });
+  m.oppColor = state.ui.setupOpp !== undefined ? state.ui.setupOpp : base ? (base.oppColor || null) : rememberedOpp(m.opponent);
+  if(state.ui.setupOpp !== undefined) rememberOpp(m.opponent, m.oppColor);
   const pre = [0,1,2].map(i => $('#pp' + i).value.trim()).filter(Boolean).map((text, i) => ({ text, eval:base?.points?.pre?.[i]?.eval || null }));
   m.points = { ...(m.points || {}), pre };
   const sp = kind === '公式戦' ? 'mSubO' : 'mSubP';
@@ -135,7 +150,7 @@ function saveMatchForm(mode){
   const m = readMatchForm(base);
   if(!base){ m.status = 'planned'; state.matches.push(m); }
   m.dirty = true;   // iPadで作った・直した予定も、次の同期でシートに送る
-  team().lastKit = m.kit; save.teams(); state.ui.setupKit = null; state.ui.recSel = null;
+  team().lastKit = m.kit; save.teams(); state.ui.setupKit = null; state.ui.setupOpp = undefined; state.ui.recSel = null;
   save.matches(); closeSheet();
   if(mode === 'start') beginMatch(m.id);
   else if(mode === 'next'){ toast(`${dateJP(m.date)} vs ${m.opponent} を保存しました。続けて次の予定を入力できます`); render(); matchSheet(null); centerWheels($('#sheet')); }
