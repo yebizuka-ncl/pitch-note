@@ -469,6 +469,8 @@ async function gasPush(){
   const evs = unsynced(), ids = new Set(evs.map(e => e.matchId));
   // 変更のあった試合と、まだ一度も送っていない試合（前の版で作った予定など）を送る。見本の試合は送らない
   state.matches.filter(m => (m.dirty || !m.pushedAt) && !m.sample).forEach(m => ids.add(m.id));
+  // PLAYER LOG 用のまとめをまだ書き出していない「終わった試合」も送る（ver.34 以前に同期した試合を含む）
+  state.matches.filter(m => m.endedAt && !m.plSentAt && !m.sample).forEach(m => ids.add(m.id));
   const matches = state.matches.filter(m => ids.has(m.id) && !m.sample).map(m => { const ev = evOf(m.id), pk = pkState(m, ev);
     return slimForSheet({ ...m, teamName:(state.teams.find(t => t.id === m.teamId) || {}).name, scoreUs:goalsOf(ev,'us'), scoreThem:goalsOf(ev,'them'), pk:pk.na + pk.nb ? `${pk.a}-${pk.b}` : '',
       recordersText:(m.recorders || []).map(recorderLabel).join('、'),
@@ -480,6 +482,8 @@ async function gasPush(){
   const r = await gasCall('push', { team:team(), roster:state.roster.filter(p => !isSampleP(p)), matches, events,
     summaries:pl.map(x => x.summary), scenes:pl.flatMap(x => x.scenes), sceneMatches:plMs.map(m => m.id) });   // 見本の選手はシートに送らない
   evs.forEach(e => e.synced = true); state.matches.forEach(m => { if(ids.has(m.id)) m.pushedAt = new Date().toISOString(); delete m.dirty; });
+  // 新しい Apps Script（ver.36〜）だけが summaries の件数を返す。返ってきたときだけ「書き出し済み」にする（古い Apps Script なら次回また送る）
+  if(typeof r?.summaries === 'number'){ const at = new Date().toISOString(); plMs.forEach(m => m.plSentAt = at); }
   state.matches = state.matches.filter(m => !m.deleted); save.matches();   // 削除した試合は、シートに「削除」を送り終えたら端末から消す
   state.events = state.events.filter(e => !(e.deleted && e.synced));
   save.events(); state.meta.lastSync = new Date().toISOString(); save.meta();
@@ -500,7 +504,7 @@ async function syncNow(){
   syncBusy = true; syncUI(true, '送信中…');
   try{ const p = await gasPush(); syncUI(true, '読み込み中…'); const q = await gasPull(); beep('ok');
     state.meta.lastSyncInfo = { at:new Date().toISOString(), ok:true, events:p.events, matches:p.matches, players:q.players, schedule:q.schedule }; save.meta();
-    syncBusy = false; syncUI(false); toast(`✅ 同期しました：記録${p.events}件・試合${p.matches}件を送信／名簿${q.players}人と予定を読み込み`); render(); }
+    syncBusy = false; syncUI(false); toast(`✅ 同期しました：記録${p.events}件・試合${p.matches}件を送信${typeof p.summaries === 'number' ? `（PLAYER LOG 用 ${p.summaries}試合）` : '（⚠️ Apps Script が古い版：PLAYER LOG 用は未送信）'}／名簿${q.players}人と予定を読み込み`); render(); }
   catch(e){ syncBusy = false; syncUI(false);
     state.meta.lastSyncInfo = { at:new Date().toISOString(), ok:false, error:e.message }; save.meta();
     toast(e.message === 'nourl' ? 'GASのURLが未設定です' : `⚠️ 同期に失敗しました（${e.message}）。電波の良い場所でもう一度試してください`); render(); }
