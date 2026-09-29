@@ -448,8 +448,9 @@ async function gasPull(){
 // 試合結果と記録を書き足す（id で上書き保存。削除した記録は deleted の印で送る）
 async function gasPush(){
   const evs = unsynced(), ids = new Set(evs.map(e => e.matchId));
-  state.matches.filter(m => m.dirty).forEach(m => ids.add(m.id));
-  const matches = state.matches.filter(m => ids.has(m.id)).map(m => { const ev = evOf(m.id), pk = pkState(m, ev);
+  // 変更のあった試合と、まだ一度も送っていない試合（前の版で作った予定など）を送る。見本の試合は送らない
+  state.matches.filter(m => (m.dirty || !m.pushedAt) && !m.sample).forEach(m => ids.add(m.id));
+  const matches = state.matches.filter(m => ids.has(m.id) && !m.sample).map(m => { const ev = evOf(m.id), pk = pkState(m, ev);
     return { ...m, teamName:(state.teams.find(t => t.id === m.teamId) || {}).name, scoreUs:goalsOf(ev,'us'), scoreThem:goalsOf(ev,'them'), pk:pk.na + pk.nb ? `${pk.a}-${pk.b}` : '',
       recordersText:(m.recorders || []).map(recorderLabel).join('、'),
       pointsText:[...(m.points?.pre || []).map(x => `[前]${x.eval || ''}${x.text}`), ...(m.points?.ht || []).map(x => `[HT]${x.eval || ''}${x.text}`),
