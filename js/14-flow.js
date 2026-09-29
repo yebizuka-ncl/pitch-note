@@ -408,8 +408,13 @@ function gasSettingsHTML(){
 const isSampleP = p => DEFAULT_ROSTER.some(d => d.id === p.id && d.name === p.name);
 async function gasCall(action, payload){
   const g = state.meta.gas || {}; if(!g.url) throw new Error('nourl');
-  const res = await fetch(`${g.url}?action=${action}&key=${encodeURIComponent(g.key || '')}`, payload ? { method:'POST', body:JSON.stringify({ key:g.key, action, ...payload }) } : {});
-  const data = await res.json(); if(!data.ok) throw new Error(data.error || 'error'); return data;
+  // 電波が弱いときに止まったままにならないよう、45秒で打ち切る
+  const ac = new AbortController(), to = setTimeout(() => ac.abort(), 45000);
+  try{
+    const res = await fetch(`${g.url}?action=${action}&key=${encodeURIComponent(g.key || '')}`, { signal:ac.signal, ...(payload ? { method:'POST', body:JSON.stringify({ key:g.key, action, ...payload }) } : {}) });
+    const data = await res.json(); if(!data.ok) throw new Error(data.error || 'error'); return data;
+  }catch(e){ throw e.name === 'AbortError' ? new Error('時間切れ：45秒たっても返事がありません') : e; }
+  finally{ clearTimeout(to); }
 }
 // マスターの読み込み：チーム・選手・予定をアプリに反映（id で突き合わせ、スプレッドシート側を優先）
 async function gasPull(){
@@ -457,11 +462,23 @@ async function gasPush(){
   save.events(); state.meta.lastSync = new Date().toISOString(); save.meta();
   return { events:evs.length, matches:matches.length, ...r };
 }
+let syncBusy = false;
+// 同期中は、ボタンに回るマークと「送信中／読み込み中」を出し、画面の上にも細い帯を流す
+function syncUI(on, label){
+  const b = $('#syncBtn'); if(!b) return;
+  b.classList.toggle('syncing', on); b.disabled = on;
+  b.innerHTML = on ? `<span class="spin" aria-hidden="true"></span>同期中 ${label || ''}` : `☁️ ドライブへ同期 <span class="badge ${unsynced().length ? '' : 'zero'}" id="syncBadge">${unsynced().length}</span>`;
+  document.body.classList.toggle('syncing', on);
+}
 async function syncNow(){
   if(!state.meta.gas?.url){ runSync(); return; }   // 未設定のときは従来どおり（コンソールへ出力）
   if(!navigator.onLine){ toast('オフラインです。Wi-Fiにつないでから同期してください'); return; }
-  toast('同期しています…');
-  try{ const p = await gasPush(); const q = await gasPull(); beep('ok');
-    toast(`同期しました：記録${p.events}件を送信・名簿${q.players}人と予定を読み込み`); render(); }
-  catch(e){ toast(e.message === 'nourl' ? 'GASのURLが未設定です' : `同期に失敗しました（${e.message}）。電波の良い場所でもう一度試してください`); }
+  if(syncBusy) return;
+  syncBusy = true; syncUI(true, '送信中…');
+  try{ const p = await gasPush(); syncUI(true, '読み込み中…'); const q = await gasPull(); beep('ok');
+    state.meta.lastSyncInfo = { at:new Date().toISOString(), ok:true, events:p.events, matches:p.matches, players:q.players, schedule:q.schedule }; save.meta();
+    syncBusy = false; syncUI(false); toast(`✅ 同期しました：記録${p.events}件・試合${p.matches}件を送信／名簿${q.players}人と予定を読み込み`); render(); }
+  catch(e){ syncBusy = false; syncUI(false);
+    state.meta.lastSyncInfo = { at:new Date().toISOString(), ok:false, error:e.message }; save.meta();
+    toast(e.message === 'nourl' ? 'GASのURLが未設定です' : `⚠️ 同期に失敗しました（${e.message}）。電波の良い場所でもう一度試してください`); render(); }
 }

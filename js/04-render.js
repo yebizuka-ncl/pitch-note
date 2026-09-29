@@ -10,7 +10,8 @@ function render(){
   document.querySelectorAll('[data-nav]').forEach(b => b.setAttribute('aria-current', b.dataset.nav === s ? 'page' : 'false'));
   $('#screenTitle').textContent = TITLES[s][0]; $('#screenEng').textContent = TITLES[s][1];
   const n = unsynced().length;
-  $('#syncBadge').textContent = n; $('#syncBadge').classList.toggle('zero', n === 0);
+  const sb = $('#syncBadge'); if(sb){ sb.textContent = n; sb.classList.toggle('zero', n === 0); }
+  const nv = $('#navVer'); if(nv) nv.textContent = APP_VER_LABEL;
   trackNav();
   $('#main').innerHTML = ({ teams:viewTeams, home:viewHome, roster:viewRoster, record:viewRecord, data:viewData, post:viewPost })[s]();
   updateClock(); renderPop(); keepAwake();

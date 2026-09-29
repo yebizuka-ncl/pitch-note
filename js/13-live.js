@@ -247,7 +247,9 @@ function addPastGo(){
 /* ---------- 設定・バックアップ ---------- */
 function settingsSheet(){
   const st = state.meta.settings;
-  openSheet(`<h2>⚙ 設定</h2>
+  const ls = state.meta.lastSyncInfo, lt = s => s ? new Date(s).toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+  openSheet(`<h2>⚙ 設定 <span class="verchip">MATCH LOG ${APP_VER_LABEL}</span></h2>
+    <div class="syncinfo ${ls ? (ls.ok ? 'ok' : 'ng') : ''}"><b>最後の同期</b>${ls ? (ls.ok ? `✅ ${lt(ls.at)} 成功：記録${ls.events}件・試合${ls.matches}件を送信／名簿${ls.players}人を読み込み` : `⚠️ ${lt(ls.at)} 失敗：${esc(ls.error)}`) : 'まだ同期していません'}　<span class="muted">未同期の記録 ${unsynced().length}件</span></div>
     <div class="setlist">
       <div class="setrow lvrow"><span><b>記録の量</b><small>記録係の慣れに合わせて選びます。試合中でも変えられます</small></span>
         <div class="lvseg" role="group" aria-label="記録の量">${LEVELS.map(l => `<button type="button" data-setlevel="${l.id}" aria-pressed="${LV() === l.id}"><b>${l.label}</b><small>${l.sub}</small></button>`).join('')}</div></div>
