@@ -104,7 +104,7 @@ function endMatch(){
       if(state.timer.brk) endBreak(true);
       foldTimer(); keepAwake(false);
       const m = cur(); if(m){ m.endedAt = new Date().toISOString(); save.matches(); state.ui.dataDate = m.date; state.ui.dataMatch = m.id; state.ui.dataPeriod = 'all'; }
-      if(m){ m.status = 'done'; save.matches(); state.ui.postMatch = m.id; }
+      if(m){ m.status = 'done'; m.dirty = true; save.matches(); state.ui.postMatch = m.id; }
       state.current = null; save.current(); state.ui.screen = 'post'; render();
     }}]});
 }

@@ -134,6 +134,7 @@ function saveMatchForm(mode){
   const f = state.ui.flow, base = f.id ? match(f.id) : null;
   const m = readMatchForm(base);
   if(!base){ m.status = 'planned'; state.matches.push(m); }
+  m.dirty = true;   // iPadで作った・直した予定も、次の同期でシートに送る
   team().lastKit = m.kit; save.teams(); state.ui.setupKit = null; state.ui.recSel = null;
   save.matches(); closeSheet();
   if(mode === 'start') beginMatch(m.id);
@@ -143,7 +144,7 @@ function saveMatchForm(mode){
 function beginMatch(id){
   const m = match(id); if(!m) return;
   if(state.current && state.current !== id && cur() && !cur().endedAt){ toast('記録中の試合があります。先に終了してください'); return; }
-  m.status = 'live'; m.date = m.date || today();
+  m.status = 'live'; m.date = m.date || today(); m.dirty = true;
   const regCopied = applyDefaultReg(m);
   m.lineupSet = false; m.gk = null; m.prevLineup = state.lineup.slice();
   state.current = m.id; save.current();

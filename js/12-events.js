@@ -150,7 +150,9 @@ $('#sheet').addEventListener('click', e => {
   if(d.kitpick){ state.ui.setupKit = +d.kitpick; applyTheme(); $('#sheet').querySelectorAll('[data-kitpick]').forEach(x => x.setAttribute('aria-pressed', x.dataset.kitpick === d.kitpick)); return; }
   if(d.recw !== undefined){ recWheelClick(b); return; }
   if(d.msave){ saveMatchForm(d.msave); return; }
-  if('mdelplan' in d){ const id = f.id, pm = match(id); if(pm?.srcId){ state.meta.deletedSrc = [...new Set([...(state.meta.deletedSrc || []), pm.srcId])]; save.meta(); } state.matches = state.matches.filter(x => x.id !== id); save.matches(); closeSheet(); toast('予定を削除しました'); render(); return; }
+  if('mdelplan' in d){ const id = f.id, pm = match(id); if(pm?.srcId){ state.meta.deletedSrc = [...new Set([...(state.meta.deletedSrc || []), pm.srcId])]; save.meta(); }
+    if(pm?.pushedAt){ pm.deleted = true; pm.dirty = true; save.matches(); closeSheet(); toast('予定を削除しました（次の同期でシートにも反映します）'); render(); return; }
+    state.matches = state.matches.filter(x => x.id !== id); save.matches(); closeSheet(); toast('予定を削除しました'); render(); return; }
   if('htsave' in d){ saveHtPoints(); return; }
   if('impparse' in d){ importPreview(parseRoster($('#impText').value)); return; }
   if('imppull' in d){ gasPull().then(r => { closeSheet(); toast(`Googleドライブから名簿${r.players}人を読み込みました`); render(); }).catch(err => toast(`読み込めませんでした（${err.message}）`)); return; }
