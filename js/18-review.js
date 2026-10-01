@@ -254,7 +254,13 @@ function lineChartHTML(title, rows, series){
 
 /* ================= ③ 復習したくなる ================= */
 
-/* ---------- 試合動画（YouTube）の時刻へジャンプ ---------- */
+/* ---------- 試合動画（YouTube・Googleドライブ）の時刻へジャンプ ---------- */
+// Googleドライブの動画のファイルid（…/file/d/ID/…、open?id=ID、uc?id=ID）
+function driveId(url){
+  const u = String(url || ''); if(!/drive\.google\.com|docs\.google\.com/.test(u)) return null;
+  const m = u.match(/\/file\/d\/([\w-]{20,})/) || u.match(/[?&]id=([\w-]{20,})/); return m ? m[1] : null;
+}
+const videoOk = url => !!(ytId(url) || driveId(url));
 function ytId(url){
   const u = String(url || '').trim(); if(!u) return null;
   const m = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|live\/|shorts\/|embed\/))([\w-]{11})/); return m ? m[1] : null;
@@ -268,7 +274,9 @@ function sceneUrl(e, m){
   else base = m.videoStart || evOf(m.id).find(x => x.type === 'kickoff' && x.wall)?.wall;
   if(!base) return null;
   const sec = Math.max(0, Math.round((e.wall - base) / 1000) - (v.lead ?? 8)), id = ytId(url);
-  return id ? `https://www.youtube.com/watch?v=${id}&t=${sec}s` : url;
+  if(id) return `https://www.youtube.com/watch?v=${id}&t=${sec}s`;
+  const did = driveId(url); if(did) return `https://drive.google.com/file/d/${did}/view?t=${sec}`;
+  return url;
 }
 const playBtn = (e, m) => { const u = sceneUrl(e, m); return u ? `<a class="playbtn" href="${esc(u)}" target="_blank" rel="noopener">▶ 動画</a>` : ''; };
 function sceneLabel(e, m){
@@ -281,13 +289,13 @@ function sceneLabel(e, m){
 function videoPanelHTML(m){
   const v = m.video || {}, perOn = !!v.split;
   const regs = m.periods.map((p, i) => ({ p, i })).filter(x => x.p.kind !== 'pk');
-  const ok = v.url ? !!ytId(v.url) : true;
+  const ok = [v.url, ...(perOn ? Object.values(v.per || {}) : [])].filter(Boolean).every(videoOk);
   return `<section class="card panel">
-    <div class="hd"><h3>🎬 試合動画</h3><span class="muted" style="font-size:12px">YouTubeにアップしたURLを貼ると、★や得点の場面へ「▶ 動画」で飛べます（限定公開でOK）</span></div>
-    <div class="vidrow"><label class="field" style="flex:1">試合全体の動画のURL<input data-vid="url" value="${esc(v.url || '')}" placeholder="https://youtu.be/…" autocomplete="off" inputmode="url"></label>
+    <div class="hd"><h3>🎬 試合動画</h3><span class="muted" style="font-size:12px">Googleドライブの動画（共有のリンク）か YouTube（限定公開でOK）のURLを貼ると、★や得点の場面へ「▶ 動画」で飛べます</span></div>
+    <div class="vidrow"><label class="field" style="flex:1">試合全体の動画のURL<input data-vid="url" value="${esc(v.url || '')}" placeholder="https://drive.google.com/file/d/…" autocomplete="off" inputmode="url"></label>
       <label class="checkrow"><input type="checkbox" data-vidsplit ${perOn ? 'checked' : ''}>ピリオドごとに分かれている</label></div>
-    ${perOn ? `<div class="vidper">${regs.map(({ p, i }) => `<label class="field">${esc(p.label)}<input data-vid="per:${i}" value="${esc(v.per?.[i] || '')}" placeholder="https://youtu.be/…" autocomplete="off" inputmode="url"></label>`).join('')}</div>` : ''}
-    ${!ok ? '<div class="note-banner">YouTubeのURLではないようです。YouTube以外の動画は時刻へ飛べません（開くだけになります）</div>' : ''}
+    ${perOn ? `<div class="vidper">${regs.map(({ p, i }) => `<label class="field">${esc(p.label)}<input data-vid="per:${i}" value="${esc(v.per?.[i] || '')}" placeholder="https://drive.google.com/file/d/…" autocomplete="off" inputmode="url"></label>`).join('')}</div>` : ''}
+    ${!ok ? '<div class="note-banner">Googleドライブの動画のリンク（…/file/d/…）か YouTube のURLではないようです。この動画は時刻へ飛べません（開くだけになります）。ドライブの場合は、フォルダではなく動画ファイルを開いて「共有」→「リンクをコピー」したURLを貼ってください</div>' : ''}
     <p class="muted" style="font-size:12px;margin:0">${m.videoStart ? '「🎥 撮影開始」を押した時刻を動画の0:00にしています。' : '「🎥 撮影開始」が記録されていないので、最初のキックオフを動画の0:00として計算します（ピリオドごとの動画は、そのキックオフが0:00）。'}場面の8秒前から再生します。</p>
   </section>`;
 }
