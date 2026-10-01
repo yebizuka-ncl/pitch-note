@@ -1,10 +1,10 @@
 // KAMAGAKU MATCH LOG Service Worker：アプリ本体を端末に保存し、電波がなくても起動できるようにする
 // 更新を配るときは VERSION を上げる（古いキャッシュは自動で消える）
-const VERSION = 'pn-v42';
+const VERSION = 'pn-v43';
 const CORE = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/01-constants.js', './js/02-store.js', './js/03-utils.js', './js/04-render.js', './js/05-teams.js', './js/06-home.js',
-  './js/07-roster.js', './js/08-record.js', './js/09-sheets.js', './js/10-stats.js', './js/11-data.js', './js/12-events.js', './js/13-live.js', './js/14-flow.js', './js/15-rules.js', './js/16-draw.js', './js/17-analysis.js', './js/18-review.js', './media/awake.mp4',
+  './js/07-roster.js', './js/08-record.js', './js/09-sheets.js', './js/10-stats.js', './js/11-data.js', './js/12-events.js', './js/13-live.js', './js/14-flow.js', './js/15-rules.js', './js/16-draw.js', './js/17-analysis.js', './js/18-review.js', './js/19-splash.js', './media/awake.mp4',
   './icons/icon-180.png', './icons/logo.svg', './icons/icon-192.png', './icons/icon-512.png',
 ];
 // 新しい版は、ブラウザの一時保存を使わずに取り直す（古いファイルが混ざらないように）

@@ -257,6 +257,7 @@ function settingsSheet(){
       <label class="setrow"><span><b>記録したときの効果音</b><small>画面を見なくても記録できたと分かります</small></span><input type="checkbox" id="setSound" ${st.sound ? 'checked' : ''}></label>
       <label class="setrow"><span><b>左手で操作する</b><small>記録ボタンの列を左側に置きます</small></span><input type="checkbox" id="setLefty" ${st.lefty ? 'checked' : ''}></label>
       <label class="setrow"><span><b>CK・FKのあとに作図を開く（「くわしい」のとき）</b><small>ハーフコートの図が出て、ボールの軌道や選手の位置をApple Pencilで描けます（「あとで」で閉じられます）</small></span><input type="checkbox" id="setDrawSP" ${st.drawSP ? 'checked' : ''}></label>
+      ${splashSettingHTML()}
       <label class="setrow"><span><b>屋外モード（明るい配色）</b><small>直射日光の下で見やすくします</small></span><input type="checkbox" id="setBright" ${state.meta.bright ? 'checked' : ''}></label>
     </div>
     ${gasSettingsHTML()}

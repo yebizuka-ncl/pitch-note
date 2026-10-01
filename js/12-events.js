@@ -327,6 +327,7 @@ Store.boot().then(() => {
   if(cur() && (state.timer.startedAt || state.timer.brk)) keepAwake(true);
   updateNet(); ensureLineup(); render();
   document.body.classList.add('ready');
+  showSplash();
 });
 // PWA：GitHub Pages などで公開したときだけ有効（オフラインでも起動できるようにする）
 if('serviceWorker' in navigator && location.protocol === 'https:' && !/claude|claudeusercontent/.test(location.hostname)){

@@ -1119,3 +1119,23 @@ body.syncing .topbar::after{content:"";position:absolute;left:0;right:0;bottom:-
 .oppick .osw.auto{display:grid;place-items:center;font-size:10.5px;color:var(--ink);background:conic-gradient(#26c6da 0 50%,#ff8a1f 0)}
 .oppwarn{margin:6px 0 0;font-size:12.5px;color:#ffcf6b}
 :root.bright .oppwarn{color:#8a5a00}
+/* 起動のエフェクト（js/19-splash.js） */
+.spl{position:fixed;inset:0;z-index:200;display:grid;place-items:center;overflow:hidden;container-type:inline-size;
+  background:radial-gradient(120% 90% at 50% 50%,#2a0c12,#0c0405);cursor:pointer}
+.spl-lines{position:absolute;inset:9% 7%;width:86%;height:82%}
+.spl-lines *{fill:none;stroke:rgba(255,255,255,.34);stroke-width:.3;stroke-dasharray:100 100;stroke-dashoffset:0;animation:splErase .8s .15s cubic-bezier(.5,0,.4,1) forwards}
+.spl-lines :nth-child(2){animation-delay:.22s}.spl-lines :nth-child(3){animation-delay:.28s}.spl-lines :nth-child(4),.spl-lines :nth-child(5){animation-delay:.34s}
+@keyframes splErase{to{stroke-dashoffset:-100;opacity:.2}}
+.spl-lockup{display:flex;align-items:center;gap:3cqw;opacity:0;transform:scale(.96);animation:splIn .45s .1s ease-out forwards}
+.spl-lockup .lmark{width:15cqw;height:auto;flex:none}
+.spl-wm{display:flex;flex-direction:column;line-height:.9;font-family:"Squada One",var(--display);color:#fff}
+.spl-wm small{font-size:2.3cqw;letter-spacing:.42em;opacity:.85}
+.spl-wm b{font-weight:400;font-size:8cqw;letter-spacing:.03em;white-space:nowrap}
+.spl-wm b i{font-style:normal;color:#ff7a1a}
+.spl-under{position:absolute;left:22%;right:22%;top:64%;height:3px;border-radius:2px;transform:scaleX(0);transform-origin:left;animation:splBar .45s .35s ease-out forwards}
+@keyframes splIn{to{opacity:1;transform:none}}
+@keyframes splBar{to{transform:scaleX(1)}}
+.spl.out{animation:splOut .38s ease forwards}
+.spl.out-fast{animation:splOut .16s ease forwards}
+@keyframes splOut{to{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion: reduce){.spl *{animation-duration:1ms!important;animation-delay:0s!important}}
