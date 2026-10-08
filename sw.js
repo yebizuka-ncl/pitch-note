@@ -1,6 +1,6 @@
 // KAMAGAKU MATCH LOG Service Worker：アプリ本体を端末に保存し、電波がなくても起動できるようにする
 // 更新を配るときは VERSION を上げる（古いキャッシュは自動で消える）
-const VERSION = 'pn-v44';
+const VERSION = 'pn-v46';
 const CORE = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/01-constants.js', './js/02-store.js', './js/03-utils.js', './js/04-render.js', './js/05-teams.js', './js/06-home.js',

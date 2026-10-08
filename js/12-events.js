@@ -44,6 +44,7 @@ document.addEventListener('click', e => {
   if(d.peval){ const [k, i, v] = d.peval.split(':'), m = match(state.ui.postMatch); const it = m?.points?.[k]?.[+i];
     if(it){ it.eval = it.eval === v ? null : v; m.dirty = true; save.matches(); render(); } return; }
   if(d.export){ exportReport(d.export); return; }
+  if(d.pclip !== undefined){ openClipMaker(match(d.pclip) || match(state.ui.postMatch)); return; }
   if(d.classroom !== undefined){ classroomSheet(match(d.classroom) || match(state.ui.postMatch)); return; }
   if('import' in d){ importSheet(); return; }
   if(d.dmode){ state.ui.dataMode = d.dmode; state.ui.dataMatch = null; state.ui.dataPeriod = 'all'; state.ui.fmPeriod = null; render(); return; }

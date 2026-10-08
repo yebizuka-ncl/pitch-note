@@ -244,6 +244,11 @@ function viewPost(){
       <div class="row" style="justify-content:flex-start"><button class="btn primary" data-classroom="${m.id}" type="button">📮 振り返りを配信（Classroom用の文を作る）</button>
         <button class="btn" data-openmatch="${m.id}" type="button">📊 データ分析を見る</button></div>
     </section>
+    <section class="card panel">
+      <div class="hd"><h3>✂️ 場面の動画</h3></div>
+      <p style="font-size:13px;margin:0">試合の動画から場面を切り取り、止めた所にペン・矢印・丸・文字を書いて、短い動画（30秒まで）にします。PLAYER LOG の「場面の動画」が開き、この試合を選んだ状態から始まります。できた動画は Google ドライブに入り、PLAYER LOG でチームのみんなが見られます。</p>
+      <div class="row" style="justify-content:flex-start"><button class="btn" data-pclip="${m.id}" type="button">✂️ 場面の動画を作る</button></div>
+    </section>
     <section class="card panel delzone"><div class="hd"><h3>🗑 この試合を削除</h3><span class="muted" style="font-size:12px">試しに記録した試合などを消します。元に戻せません</span></div>
       <div class="row" style="justify-content:flex-start"><button class="btn danger" data-delmatch="${m.id}" type="button">この試合を削除する</button></div></section>
   </div>`;
@@ -417,7 +422,7 @@ function gasSettingsHTML(){
     <p style="font-size:12.5px">マスターのスプレッドシートに付けたGASのWebアプリURLと合言葉を入れると、同期のときに<b>試合結果を書き足し</b>、<b>名簿・予定を読み込み</b>ます。設定方法は同梱の「GAS設定手順」を見てください。</p>
     <label class="field">WebアプリのURL<input id="gasUrl" value="${esc(g.url || '')}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
     <label class="field">合言葉（GAS側と同じもの）<input id="gasKey" value="${esc(g.key || '')}" placeholder="例：pitch-2026" autocomplete="off"></label>
-    <label class="field">PLAYER LOG のURL（振り返りの配信に使います）<input id="plUrl" value="${esc(state.meta.playerLogUrl || '')}" placeholder="https://script.google.com/a/macros/…/exec" autocomplete="off" inputmode="url"></label>
+    <label class="field">PLAYER LOG のURL（振り返りの配信・場面の動画に使います）<input id="plUrl" value="${esc(state.meta.playerLogUrl || '')}" placeholder="https://script.google.com/a/macros/…/exec" autocomplete="off" inputmode="url"></label>
     <div class="row" style="justify-content:flex-start"><button class="btn small" data-gassave type="button">保存</button><button class="btn small" data-gastest type="button">接続テスト</button>
       ${g.lastPull ? `<span class="muted" style="font-size:12px">最終読み込み：${esc(g.lastPull.slice(0,16).replace('T',' '))}</span>` : ''}</div>`;
 }

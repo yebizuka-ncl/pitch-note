@@ -297,6 +297,7 @@ function videoPanelHTML(m){
     ${perOn ? `<div class="vidper">${regs.map(({ p, i }) => `<label class="field">${esc(p.label)}<input data-vid="per:${i}" value="${esc(v.per?.[i] || '')}" placeholder="https://drive.google.com/file/d/…" autocomplete="off" inputmode="url"></label>`).join('')}</div>` : ''}
     ${!ok ? '<div class="note-banner">Googleドライブの動画のリンク（…/file/d/…）か YouTube のURLではないようです。この動画は時刻へ飛べません（開くだけになります）。ドライブの場合は、フォルダではなく動画ファイルを開いて「共有」→「リンクをコピー」したURLを貼ってください</div>' : ''}
     <p class="muted" style="font-size:12px;margin:0">${m.videoStart ? '「🎥 撮影開始」を押した時刻を動画の0:00にしています。' : '「🎥 撮影開始」が記録されていないので、最初のキックオフを動画の0:00として計算します（ピリオドごとの動画は、そのキックオフが0:00）。'}場面の8秒前から再生します。</p>
+    <div class="row" style="justify-content:flex-start"><button class="btn" data-pclip="${m.id}" type="button">✂️ 場面の動画を作る（書き込み入り・PLAYER LOG）</button></div>
   </section>`;
 }
 let vidTimer;
@@ -552,6 +553,14 @@ function teamDataJSON(m){
   if(j.length > 45000){ d.wins = []; j = JSON.stringify(d); }
   if(j.length > 45000){ d.shots = []; j = JSON.stringify(d); }
   return j;
+}
+// 場面の動画を作る：PLAYER LOG の「場面の動画 › 作る」を、この試合を選んだ状態で開く（ver.46）
+// 動画の切り取り・書き込み・ドライブへの保存は PLAYER LOG が受け持つ（iPad の Safari でも使える）
+function openClipMaker(m){
+  const base = state.meta.playerLogUrl;
+  if(!base){ toast('⚙ 設定の「PLAYER LOG のURL」を入れてください'); return; }
+  const url = `${base}${base.includes('?') ? '&' : '?'}clip=new${m ? `&match=${encodeURIComponent(m.id)}` : ''}`;
+  window.open(url, '_blank');
 }
 // 試合後：Classroom に貼る文（試合のまとめ＋PLAYER LOG へのリンク）
 function classroomText(m){
